@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · CMS{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4" data-tour-auto="dashboard">
+    <h1 class="h3 mb-0">Dashboard</h1>
+    <a href="{% url 'collection_create' %}" class="btn btn-primary"
+       data-intro="Hier legst du eine neue Sammlung an. Du startest mit Standardfeldern oder übernimmst die Felder einer bestehenden Sammlung." data-step="2">
+        <i class="bi bi-plus-lg"></i> Neue Sammlung
+    </a>
+</div>
+
+<div class="row g-3 mb-4"
+     data-intro="Dein Überblick: Anzahl eigener und geteilter Sammlungen, Gegenstände insgesamt und der Gesamtwert über alle Preisfelder." data-step="1">
+    <div class="col-6 col-lg-3">
+        <div class="card text-bg-primary shadow-sm"><div class="card-body">
+            <div class="h2 mb-0">{{ owned_count }}</div><div>Eigene Sammlungen</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-bg-info shadow-sm"><div class="card-body">
+            <div class="h2 mb-0">{{ shared_count }}</div><div>Freigegeben für mich</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-bg-secondary shadow-sm"><div class="card-body">
+            <div class="h2 mb-0">{{ total_items }}</div><div>Gegenstände insgesamt</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card text-bg-success shadow-sm"><div class="card-body">
+            <div class="h2 mb-0">{{ total_value|floatformat:2 }} €</div><div>Gesamtwert (Preisfelder)</div>
+        </div></div>
+    </div>
+</div>
+
+<h2 class="h5 mb-3" data-intro="Hier erscheinen alle deine und die für dich freigegebenen Sammlungen. Klick auf eine Karte, um sie zu öffnen." data-step="3">
+    Deine Sammlungen
+    {% include '_help.html' with text="Sammlungen sind deine Kataloge – z. B. Bücher, Filme oder Werkzeuge. Jede hat eigene, frei definierbare Felder." %}
+</h2>
+{% include 'collections/_collection_grid.html' %}
+{% endblock %}

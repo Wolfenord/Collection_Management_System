@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}{{ collection.name }} · CMS{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+        <li class="breadcrumb-item active">{{ collection.name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2" data-tour-auto="collection">
+    <div>
+        <h1 class="h3 mb-1">{{ collection.name }}</h1>
+        <p class="text-muted mb-0">{{ collection.description|default:'Keine Beschreibung.' }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge text-bg-secondary text-uppercase align-self-center">{{ permission }}</span>
+        <a href="{% url 'collection_statistics' collection.pk %}" class="btn btn-outline-secondary"
+           data-intro="Auswertungen deiner Sammlung: Summen, Durchschnitte und Verteilungen – dynamisch aus deinen Feldern." data-step="6">
+            <i class="bi bi-bar-chart"></i> Statistik
+        </a>
+        {% if permission == 'owner' %}
+        <a href="{% url 'collection_shares' collection.pk %}" class="btn btn-outline-secondary"
+           data-intro="Gib die Sammlung für andere Nutzer frei – nur ansehen oder auch bearbeiten." data-step="7">
+            <i class="bi bi-people"></i> Teilen
+        </a>
+        {% endif %}
+        {% if can_edit %}
+        <a href="{% url 'item_create' collection.pk %}" class="btn btn-primary"
+           data-intro="Lege hier einen neuen Gegenstand an. Das Formular passt sich automatisch an deine Felder an." data-step="2">
+            <i class="bi bi-plus-lg"></i> Gegenstand
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist"
+    data-intro="Drei Bereiche: <strong>Gegenstände</strong> (deine Einträge), <strong>Felder</strong> (die Spalten) und <strong>Arten</strong> (Typen mit eigenen Pflichtfeldern)." data-step="1">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button">Gegenstände ({{ item_count }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fields" type="button">Felder ({{ fields|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-types" type="button">Arten ({{ item_types|length }})</button></li>
+</ul>
+
+<div class="tab-content">
+    <!-- Items -->
+    <div class="tab-pane fade show active" id="tab-items">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <div class="text-muted small">
+                {% if active_filters %}
+                    <strong>{{ result_count }}</strong> von {{ item_count }} Gegenständen
+                    <span class="badge text-bg-primary">{{ active_filters }} Filter aktiv</span>
+                {% else %}
+                    {{ item_count }} Gegenstände
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel"
+                        data-intro="Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und als QR-Code nutzen." data-step="3">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-copy="{{ share_url }}" title="Aktuellen Filter als Link kopieren (Basis für QR-Codes)">
+                    <i class="bi bi-link-45deg"></i> Filter-Link kopieren
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#qrModal"
+                        data-intro="Erzeuge einen QR-Code für die aktuelle (gefilterte) Ansicht – ideal als Etikett für Regal, Bereich oder Fach." data-step="4">
+                    <i class="bi bi-qr-code"></i> QR
+                </button>
+                <a class="btn btn-sm btn-outline-success"
+                   href="{% url 'collection_export' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                   title="{% if active_filters %}Gefilterte Ansicht{% else %}Gesamte Sammlung{% endif %} als Excel exportieren"
+                   data-intro="Exportiere die (gefilterte) Sammlung als Excel-Datei – die Spalten entsprechen deinen Feldern." data-step="5">
+                    <i class="bi bi-file-earmark-excel"></i> Export
+                </a>
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{% url 'collection_labels' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                   title="QR-Etiketten der {% if active_filters %}gefilterten{% else %}gesamten{% endif %} Auswahl als PDF drucken"
+                   data-intro="Drucke QR-Etiketten (PDF) für die angezeigten Gegenstände – zum Aufkleben auf die Objekte." data-step="5b">
+                    <i class="bi bi-printer"></i> Etiketten
+                </a>
+            </div>
+        </div>
+        <div class="collapse {% if active_filters %}show{% endif %} mb-3" id="filterPanel">
+            <div class="card card-body bg-white shadow-sm">
+                {% include 'collections/_filter_panel.html' %}
+            </div>
+        </div>
+        {% if rows %}
+        <div class="table-responsive bg-white rounded shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Art</th>
+                        {% for field in fields %}<th>{{ field.label }}</th>{% endfor %}
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
+                        {% for cell in row.cells %}
+                        <td>
+                            {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" style="height:36px" class="rounded">
+                            {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
+                            {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank">{{ cell.value|truncatechars:30 }}</a>
+                            {% elif cell.kind == 'empty' %}<span class="text-muted">–</span>
+                            {% else %}{{ cell.value|truncatechars:60 }}{% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="text-end">
+                            <a href="{% url 'item_detail' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5 border rounded bg-white">
+            <i class="bi bi-box-seam display-5 d-block mb-2"></i>
+            {% if active_filters %}
+                Keine Treffer für die aktuellen Filter.
+                <a href="{% url 'collection_detail' collection.pk %}">Filter zurücksetzen</a>
+            {% else %}
+                Noch keine Gegenstände.
+                {% if can_edit %}<a href="{% url 'item_create' collection.pk %}">Füge den ersten hinzu.</a>{% endif %}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Fields -->
+    <div class="tab-pane fade" id="tab-fields">
+        <div class="bg-white rounded shadow-sm p-3">
+            {% if can_edit %}
+            <div class="text-end mb-2"><a href="{% url 'field_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Feld</a></div>
+            {% endif %}
+            {% if can_edit %}<p class="text-muted small mb-1"><i class="bi bi-grip-vertical"></i> Zeilen ziehen, um die Spaltenreihenfolge zu ändern.</p>{% endif %}
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light"><tr>{% if can_edit %}<th></th>{% endif %}<th>Bezeichnung</th><th>Schlüssel</th><th>Typ</th><th>Pflicht</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+                <tbody id="fieldsSortable"{% if can_edit %} data-reorder-url="{% url 'field_reorder' collection.pk %}"{% endif %}>
+                    {% for field in fields %}
+                    <tr data-field-id="{{ field.pk }}">
+                        {% if can_edit %}<td class="drag-handle text-muted" style="cursor:grab"><i class="bi bi-grip-vertical"></i></td>{% endif %}
+                        <td>{{ field.label }}{% if field.is_system %} <span class="badge text-bg-light">Standard</span>{% endif %}</td>
+                        <td><code>{{ field.key }}</code></td>
+                        <td>{{ field.get_field_type_display }}</td>
+                        <td>{% if field.required %}<i class="bi bi-check-lg text-success"></i>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+                        {% if can_edit %}
+                        <td class="text-end">
+                            <a href="{% url 'field_edit' collection.pk field.pk %}" class="btn btn-sm btn-outline-secondary">Bearbeiten</a>
+                            <a href="{% url 'field_delete' collection.pk field.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Types -->
+    <div class="tab-pane fade" id="tab-types">
+        <div class="bg-white rounded shadow-sm p-3">
+            {% if can_edit %}
+            <div class="text-end mb-2"><a href="{% url 'type_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Art</a></div>
+            {% endif %}
+            {% if item_types %}
+            <ul class="list-group">
+                {% for t in item_types %}
+                <li class="list-group-item">
+                    <strong>{{ t.name }}</strong>
+                    {% if t.description %}<div class="text-muted small">{{ t.description }}</div>{% endif %}
+                    {% with reqs=t.required_fields.all %}
+                    {% if reqs %}<div class="small">Pflichtfelder: {% for f in reqs %}<span class="badge text-bg-light">{{ f.label }}</span> {% endfor %}</div>{% endif %}
+                    {% endwith %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">Noch keine Arten definiert. Arten erlauben es, je Typ unterschiedliche Pflichtfelder festzulegen.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- QR code for the current (filtered) view -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR-Code für diese Ansicht{% if active_filters %} (gefiltert){% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{% url 'collection_qr' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                     class="img-fluid" alt="QR-Code" style="max-width:280px">
+                <p class="text-muted small mt-2 mb-0">
+                    Scannen öffnet genau diese {% if active_filters %}gefilterte {% endif %}Liste –
+                    ideal als Etikett für Regal, Bereich oder Fach.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-primary btn-sm"
+                   href="{% url 'collection_qr' collection.pk %}?download=1{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">
+                    <i class="bi bi-download"></i> Herunterladen
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if can_edit %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+    const tbody = document.getElementById('fieldsSortable');
+    if (!tbody || !window.Sortable) return;
+    const url = tbody.getAttribute('data-reorder-url');
+
+    function csrf() {
+        const m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+        return m ? m[1] : '';
+    }
+
+    window.Sortable.create(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function () {
+            const order = Array.from(tbody.querySelectorAll('tr[data-field-id]'))
+                .map(function (tr) { return tr.dataset.fieldId; });
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                body: JSON.stringify({ order: order }),
+            }).catch(function () { /* keep silent; reload reflects saved order */ });
+        },
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

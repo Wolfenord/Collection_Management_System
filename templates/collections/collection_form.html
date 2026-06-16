@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Neue Sammlung · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <h1 class="h3 mb-3">Neue Sammlung</h1>
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                {% endfor %}
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle"></i>
+                    Ohne Vorlage startet die Sammlung mit Standardspalten (Name, Ort, Kaufdatum, Preis, Beleg, Bild).
+                    Felder lassen sich jederzeit hinzufügen, ändern oder entfernen.
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Sammlung erstellen</button>
+                    <a href="{% url 'collection_list' %}" class="btn btn-outline-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div></div>
+    </div>
+</div>
+{% endblock %}

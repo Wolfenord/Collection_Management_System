@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <nav aria-label="breadcrumb"><ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol></nav>
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <h1 class="h4 mb-3">{{ title }}</h1>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% include 'collections/_form_fields.html' %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                    <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div></div>
+    </div>
+</div>
+{% endblock %}

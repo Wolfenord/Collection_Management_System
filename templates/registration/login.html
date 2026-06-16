@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Anmelden · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3">Anmelden</h1>
+                {% if form.errors %}
+                <div class="alert alert-danger">Benutzername oder Passwort ist falsch.</div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="id_username">Benutzername</label>
+                        <input type="text" name="username" id="id_username" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="id_password">Passwort</label>
+                        <input type="password" name="password" id="id_password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+                </form>
+                <p class="text-center mt-3 mb-0 small">
+                    Noch kein Konto? <a href="{% url 'register' %}">Jetzt registrieren</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

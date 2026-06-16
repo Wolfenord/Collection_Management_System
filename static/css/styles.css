@@ -1,0 +1,16 @@
+/* Project-specific tweaks on top of Bootstrap. */
+body {
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+}
+
+.navbar-brand i {
+    vertical-align: -2px;
+}
+
+code {
+    color: var(--bs-secondary-color);
+}

@@ -1,0 +1,33 @@
+{% if collections %}
+<div class="row g-3">
+    {% for collection in collections %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h3 class="h5 card-title">
+                        <a href="{% url 'collection_detail' collection.pk %}" class="stretched-link text-decoration-none">
+                            {{ collection.name }}
+                        </a>
+                    </h3>
+                    {% if collection.owner_id != request.user.id %}
+                    <span class="badge text-bg-info">geteilt</span>
+                    {% endif %}
+                </div>
+                <p class="card-text text-muted small">{{ collection.description|default:'Keine Beschreibung.'|truncatewords:20 }}</p>
+            </div>
+            <div class="card-footer bg-transparent d-flex justify-content-between small text-muted">
+                <span><i class="bi bi-box-seam"></i> {{ collection.item_count }} Gegenstände</span>
+                <span>{{ collection.owner }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5 border rounded bg-white">
+    <i class="bi bi-collection display-5 d-block mb-2"></i>
+    Noch keine Sammlungen.
+    <a href="{% url 'collection_create' %}">Erstelle deine erste Sammlung.</a>
+</div>
+{% endif %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ title }} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb"><ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol></nav>
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <h1 class="h4 mb-3">{{ title }}</h1>
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                {% include 'collections/_form_fields.html' %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                    <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div></div>
+    </div>
+</div>
+
+<!-- Camera scan modal for ISBN/barcode fields -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Code scannen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body">
+                <div id="scanRegion" style="width:100%"></div>
+                <div id="scanError" class="alert alert-warning mt-2 d-none mb-0 small"></div>
+                <p class="text-muted small mt-2 mb-0">Halte den Barcode/QR-Code vor die Kamera.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'js/scanner.js' %}"></script>
+{% endblock %}

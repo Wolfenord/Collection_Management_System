@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Gegenstand · {{ collection.name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
+    <li class="breadcrumb-item active">Gegenstand</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+    <div>
+        <h1 class="h4 mb-1">{{ item }}</h1>
+        {% if item.item_type %}<span class="badge text-bg-secondary">{{ item.item_type }}</span>{% endif %}
+        <div class="text-muted small mt-1">ID: <code>{{ item.id }}</code></div>
+    </div>
+    {% if can_edit %}
+    <div class="d-flex gap-2">
+        <a href="{% url 'item_edit' collection.pk item.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Bearbeiten</a>
+        <a href="{% url 'item_delete' collection.pk item.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Löschen</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <dl class="row mb-0">
+                {% for field, cell in pairs %}
+                <dt class="col-sm-4 text-muted">{{ field.label }}</dt>
+                <dd class="col-sm-8">
+                    {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" class="img-fluid rounded" style="max-height:240px">
+                    {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
+                    {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank">{{ cell.value }}</a>
+                    {% elif cell.kind == 'empty' %}<span class="text-muted">–</span>
+                    {% else %}{{ cell.value }}{% endif %}
+                </dd>
+                {% endfor %}
+            </dl>
+        </div></div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm"><div class="card-body text-center">
+            <h2 class="h6 text-muted">QR-Code</h2>
+            <img src="{% url 'item_qr' collection.pk item.pk %}" alt="QR-Code" class="img-fluid" style="max-width:180px">
+            <p class="small text-muted">Scannen öffnet diese Seite.</p>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'item_qr' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> QR</a>
+            <hr>
+            <h2 class="h6 text-muted">Barcode</h2>
+            <img src="{% url 'item_barcode' collection.pk item.pk %}" alt="Barcode" class="img-fluid">
+            <a class="btn btn-sm btn-outline-secondary mt-1" href="{% url 'item_barcode' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> Barcode</a>
+        </div></div>
+    </div>
+</div>
+{% endblock %}
