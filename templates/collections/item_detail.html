@@ -1,22 +1,31 @@
 {% extends 'base.html' %}
-{% block title %}Gegenstand · {{ collection.name }}{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Gegenstand" %} · {{ collection.name }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">{% trans "Sammlungen" %}</a></li>
     <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
-    <li class="breadcrumb-item active">Gegenstand</li>
+    <li class="breadcrumb-item active">{% trans "Gegenstand" %}</li>
 </ol></nav>
 
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
     <div>
         <h1 class="h4 mb-1">{{ item }}</h1>
         {% if item.item_type %}<span class="badge text-bg-secondary">{{ item.item_type }}</span>{% endif %}
-        <div class="text-muted small mt-1">ID: <code>{{ item.id }}</code></div>
+        {% if loan %}<span class="badge text-bg-warning">{% trans "Verliehen" %}</span>{% endif %}
+        <div class="text-muted small mt-1">{% trans "ID" %}: <code>{{ item.id }}</code></div>
     </div>
     {% if can_edit %}
     <div class="d-flex gap-2">
-        <a href="{% url 'item_edit' collection.pk item.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Bearbeiten</a>
-        <a href="{% url 'item_delete' collection.pk item.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Löschen</a>
+        <a href="{% url 'item_edit' collection.pk item.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {% trans "Bearbeiten" %}</a>
+        <form method="post" action="{% url 'item_duplicate' collection.pk item.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary"
+                    title="{% trans 'Kopie dieses Gegenstands anlegen (inkl. Werte und Dateien)' %}">
+                <i class="bi bi-copy"></i> {% trans "Duplizieren" %}
+            </button>
+        </form>
+        <a href="{% url 'item_delete' collection.pk item.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> {% trans "Löschen" %}</a>
     </div>
     {% endif %}
 </div>
@@ -39,15 +48,64 @@
         </div></div>
     </div>
     <div class="col-lg-4">
+        <div class="card shadow-sm mb-3"><div class="card-body">
+            <h2 class="h6 text-muted"><i class="bi bi-arrow-left-right"></i> {% trans "Ausleihe" %}</h2>
+            {% if loan %}
+            <div class="alert {% if loan.is_overdue %}alert-danger{% else %}alert-warning{% endif %} py-2 mb-2">
+                {% blocktrans with borrower=loan.borrower since=loan.lent_at %}Verliehen an <strong>{{ borrower }}</strong> seit {{ since }}.{% endblocktrans %}
+                {% if loan.due_at %}
+                <div class="small">
+                    {% trans "Rückgabe bis" %} <strong>{{ loan.due_at }}</strong>
+                    {% if loan.is_overdue %}<span class="badge text-bg-danger">{% trans "überfällig" %}</span>{% endif %}
+                </div>
+                {% elif loan.is_overdue %}
+                <div class="small"><span class="badge text-bg-danger">{% trans "über 30 Tage" %}</span></div>
+                {% endif %}
+                {% if loan.note %}<div class="small text-muted">{{ loan.note }}</div>{% endif %}
+            </div>
+            {% if can_edit %}
+            <form method="post" action="{% url 'item_return' collection.pk item.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check2"></i> {% trans "Rückgabe vermerken" %}</button>
+            </form>
+            {% endif %}
+            {% elif can_edit %}
+            <form method="post" action="{% url 'item_lend' collection.pk item.pk %}" class="d-grid gap-2">
+                {% csrf_token %}
+                <input type="text" class="form-control form-control-sm" name="borrower"
+                       placeholder="{% trans 'An wen verleihen?' %}" maxlength="120" required>
+                <div>
+                    <label class="form-label small text-muted mb-0" for="lendDueAt">{% trans "Rückgabe bis (optional)" %}</label>
+                    <input type="date" class="form-control form-control-sm" name="due_at" id="lendDueAt">
+                </div>
+                <input type="text" class="form-control form-control-sm" name="note"
+                       placeholder="{% trans 'Notiz (optional)' %}" maxlength="255">
+                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i> {% trans "Als verliehen markieren" %}</button>
+            </form>
+            {% else %}
+            <p class="text-muted small mb-0">{% trans "Nicht verliehen." %}</p>
+            {% endif %}
+            {% if past_loans %}
+            <hr class="my-2">
+            <div class="small text-muted">
+                {% trans "Frühere Ausleihen:" %}
+                <ul class="mb-0 ps-3">
+                    {% for past in past_loans %}
+                    <li>{{ past.borrower }} ({{ past.lent_at }} – {{ past.returned_at }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div></div>
         <div class="card shadow-sm"><div class="card-body text-center">
-            <h2 class="h6 text-muted">QR-Code</h2>
-            <img src="{% url 'item_qr' collection.pk item.pk %}" alt="QR-Code" class="img-fluid" style="max-width:180px">
-            <p class="small text-muted">Scannen öffnet diese Seite.</p>
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'item_qr' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> QR</a>
+            <h2 class="h6 text-muted">{% trans "QR-Code" %}</h2>
+            <img src="{% url 'item_qr' collection.pk item.pk %}" alt="{% trans 'QR-Code' %}" class="img-fluid" style="max-width:180px">
+            <p class="small text-muted">{% trans "Scannen öffnet diese Seite." %}</p>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'item_qr' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> {% trans "QR" %}</a>
             <hr>
-            <h2 class="h6 text-muted">Barcode</h2>
-            <img src="{% url 'item_barcode' collection.pk item.pk %}" alt="Barcode" class="img-fluid">
-            <a class="btn btn-sm btn-outline-secondary mt-1" href="{% url 'item_barcode' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> Barcode</a>
+            <h2 class="h6 text-muted">{% trans "Barcode" %}</h2>
+            <img src="{% url 'item_barcode' collection.pk item.pk %}" alt="{% trans 'Barcode' %}" class="img-fluid">
+            <a class="btn btn-sm btn-outline-secondary mt-1" href="{% url 'item_barcode' collection.pk item.pk %}?download=1"><i class="bi bi-download"></i> {% trans "Barcode" %}</a>
         </div></div>
     </div>
 </div>

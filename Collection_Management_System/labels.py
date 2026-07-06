@@ -14,6 +14,8 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
+from django.utils.translation import gettext as _
+
 from . import codes
 
 COLS, ROWS = 3, 8          # 24 labels per A4 page
@@ -32,7 +34,7 @@ def build_label_pdf(items, build_uri, detail_path_for) -> bytes:
 
     if not items:
         c.setFont('Helvetica', 12)
-        c.drawCentredString(width / 2, height / 2, 'Keine Gegenstände zum Drucken.')
+        c.drawCentredString(width / 2, height / 2, _('Keine Gegenstände zum Drucken.'))
         c.showPage()
         c.save()
         return buf.getvalue()

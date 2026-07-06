@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Papierkorb" %} · {{ collection.name }} · CMS{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
+    <li class="breadcrumb-item active">{% trans "Papierkorb" %}</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-trash"></i> {% trans "Papierkorb" %}</h1>
+    {% if items %}
+    <form method="post" action="{% url 'trash_empty' collection.pk %}"
+          onsubmit="return confirm('{% trans "Papierkorb wirklich leeren? Das kann nicht rückgängig gemacht werden." %}');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-x-circle"></i> {% trans "Papierkorb leeren" %}
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<p class="text-body-secondary">
+    {% blocktrans %}Gelöschte Gegenstände werden nach {{ retention_days }} Tagen automatisch
+    endgültig entfernt.{% endblocktrans %}
+</p>
+
+{% if items %}
+<div class="card shadow-sm"><div class="table-responsive">
+    <table class="table align-middle mb-0">
+        <thead><tr>
+            <th>{% trans "Gegenstand" %}</th>
+            <th>{% trans "Art" %}</th>
+            <th>{% trans "Gelöscht am" %}</th>
+            <th class="text-end">{% trans "Aktionen" %}</th>
+        </tr></thead>
+        <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item }}</td>
+            <td>{{ item.item_type|default:"—" }}</td>
+            <td class="text-body-secondary">{{ item.deleted_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+            <td class="text-end">
+                <form method="post" action="{% url 'item_restore' collection.pk item.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-arrow-counterclockwise"></i> {% trans "Wiederherstellen" %}
+                    </button>
+                </form>
+                <form method="post" action="{% url 'item_purge' collection.pk item.pk %}" class="d-inline"
+                      onsubmit="return confirm('{% trans "Endgültig löschen? Das kann nicht rückgängig gemacht werden." %}');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-x-lg"></i> {% trans "Endgültig löschen" %}
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div></div>
+{% else %}
+<div class="alert alert-light border text-center">{% trans "Der Papierkorb ist leer." %}</div>
+{% endif %}
+{% endblock %}

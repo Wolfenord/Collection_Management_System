@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Systemeinstellungen" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <h1 class="h4 mb-2"><i class="bi bi-sliders"></i> {% trans "Systemeinstellungen" %}</h1>
+            <p class="text-body-secondary mb-4">
+                {% blocktrans %}Diese Einstellungen gelten für die gesamte Anwendung und
+                werden sofort wirksam — ein Neustart ist nicht nötig. Sie werden in der
+                Datenbank gespeichert und überschreiben die Vorgaben aus config.ini.{% endblocktrans %}
+            </p>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% include 'collections/_form_fields.html' %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">{% trans "Speichern" %}</button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
+                    <a href="{% url 'site_settings_export' %}" class="btn btn-outline-secondary ms-auto"
+                       title="{% trans 'Aktuelle Werte als INI-Datei herunterladen (für config.ini einer anderen Instanz)' %}">
+                        <i class="bi bi-download"></i> {% trans "Als INI exportieren" %}
+                    </a>
+                </div>
+            </form>
+        </div></div>
+        {% if history %}
+        <div class="card shadow-sm mt-4"><div class="card-body p-4">
+            <h2 class="h5 mb-3"><i class="bi bi-clock-history"></i> {% trans "Letzte Änderungen" %}</h2>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr>
+                        <th>{% trans "Einstellung" %}</th>
+                        <th>{% trans "Änderung" %}</th>
+                        <th>{% trans "Von" %}</th>
+                        <th>{% trans "Wann" %}</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for change in history %}
+                    <tr>
+                        <td>{{ change.label }}</td>
+                        <td><code>{{ change.old_value }}</code> → <code>{{ change.new_value }}</code></td>
+                        <td>{{ change.changed_by|default:"—" }}</td>
+                        <td class="text-body-secondary">{{ change.changed_at|date:"SHORT_DATETIME_FORMAT" }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

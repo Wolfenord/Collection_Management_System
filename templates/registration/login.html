@@ -1,28 +1,39 @@
 {% extends 'base.html' %}
-{% block title %}Anmelden · CMS{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Anmelden" %} · CMS{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-5">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="h4 mb-3">Anmelden</h1>
-                {% if form.errors %}
-                <div class="alert alert-danger">Benutzername oder Passwort ist falsch.</div>
+                <h1 class="h4 mb-3">{% trans "Anmelden" %}</h1>
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% elif form.errors %}
+                <div class="alert alert-danger">{% trans "Benutzername oder Passwort ist falsch." %}</div>
                 {% endif %}
                 <form method="post">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label class="form-label" for="id_username">Benutzername</label>
+                        <label class="form-label" for="id_username">{% trans "Benutzername" %}</label>
                         <input type="text" name="username" id="id_username" class="form-control" required autofocus>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="id_password">Passwort</label>
+                        <label class="form-label" for="id_password">{% trans "Passwort" %}</label>
                         <input type="password" name="password" id="id_password" class="form-control" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+                    <button type="submit" class="btn btn-primary w-100">{% trans "Anmelden" %}</button>
                 </form>
                 <p class="text-center mt-3 mb-0 small">
-                    Noch kein Konto? <a href="{% url 'register' %}">Jetzt registrieren</a>
+                    {% if site_config.registration_enabled %}
+                    {% trans "Noch kein Konto?" %} <a href="{% url 'register' %}">{% trans "Jetzt registrieren" %}</a>
+                    ·
+                    {% endif %}
+                    <a href="{% url 'password_reset' %}">{% trans "Passwort vergessen?" %}</a>
                 </p>
             </div>
         </div>

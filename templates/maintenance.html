@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Wartung" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card shadow-sm"><div class="card-body p-5">
+            <i class="bi bi-tools display-1 text-warning"></i>
+            <h1 class="h3 mt-3">{% trans "Wartungsarbeiten" %}</h1>
+            <p class="text-body-secondary mb-0">
+                {% blocktrans %}Das System wird gerade gewartet und ist in Kürze wieder
+                erreichbar. Bitte versuche es später noch einmal.{% endblocktrans %}
+            </p>
+        </div></div>
+    </div>
+</div>
+{% endblock %}

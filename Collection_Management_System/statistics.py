@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+from django.utils.translation import gettext as _
+
 from .models import FieldType
 
 NUMERIC_TYPES = {FieldType.NUMBER, FieldType.YEAR, FieldType.DECIMAL, FieldType.PRICE}
@@ -63,7 +65,7 @@ def collection_stats(collection, items, fields) -> dict:
 
     type_counter: Counter = Counter()
     for it in items:
-        type_counter[str(it.item_type) if it.item_type else 'Ohne Art'] += 1
+        type_counter[str(it.item_type) if it.item_type else _('Ohne Art')] += 1
 
     return {
         'total_items': len(items),

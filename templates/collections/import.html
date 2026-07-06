@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Import" %} · {{ collection.name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb"><ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
+            <li class="breadcrumb-item active">{% trans "Import" %}</li>
+        </ol></nav>
+        <div class="card shadow-sm"><div class="card-body p-4">
+            <h1 class="h4 mb-3"><i class="bi bi-file-earmark-arrow-up"></i> {% trans "Excel/CSV-Import" %}</h1>
+            <p class="text-muted small">
+                {% trans "Importiere Gegenstände aus einer .xlsx- oder .csv-Datei. Die erste Zeile muss die Spaltenüberschriften enthalten – sie werden den Feldern dieser Sammlung über deren Namen zugeordnet (genau wie sie der Excel-Export schreibt). Eine Spalte „Art“ setzt die Art des Gegenstands; unbekannte Arten werden automatisch angelegt. Bild- und Datei-Spalten können nicht importiert werden." %}
+            </p>
+            <div class="alert alert-light border small">
+                {% trans "Erwartete Spalten:" %} <strong>Art</strong>{% for field in fields %}{% if field.field_type != 'image' and field.field_type != 'file' %}, {{ field.label }}{% endif %}{% endfor %}
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="input-group mb-3">
+                    <input type="file" class="form-control" name="file" accept=".xlsx,.csv" required>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> {% trans "Importieren" %}</button>
+                </div>
+            </form>
+            {% if result %}
+            <hr>
+            <h2 class="h6">{% trans "Ergebnis" %}</h2>
+            <p class="mb-1"><i class="bi bi-check-circle text-success"></i>
+                {% blocktrans with count=result.created %}{{ count }} Gegenstände importiert.{% endblocktrans %}</p>
+            {% if result.ignored_columns %}
+            <p class="mb-1 small text-muted"><i class="bi bi-info-circle"></i>
+                {% trans "Ignorierte Spalten:" %} {{ result.ignored_columns|join:", " }}</p>
+            {% endif %}
+            {% if result.warnings %}
+            <details class="small text-warning-emphasis">
+                <summary>{% blocktrans count counter=result.warnings|length %}{{ counter }} Hinweis{% plural %}{{ counter }} Hinweise{% endblocktrans %}</summary>
+                <ul class="mb-0">{% for warning in result.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+            </details>
+            {% endif %}
+            <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-sm btn-outline-secondary mt-2">
+                {% trans "Zur Sammlung" %}
+            </a>
+            {% endif %}
+        </div></div>
+    </div>
+</div>
+{% endblock %}

@@ -1,11 +1,13 @@
-// Camera scanning for inputs marked with data-scan ("isbn" | "barcode").
-// Injects a camera button next to each such input; scanning fills the input.
-// Uses html5-qrcode (loaded on the item form page). Inputs still work manually
+// Camera scanning for inputs marked with data-scan ("isbn" | "barcode") and for
+// the scan-to-find button (#scanFind, data-find-url): scanning an item label /
+// ISBN there navigates to the find view, which opens the matching item.
+// Uses html5-qrcode (loaded where needed). Inputs still work manually
 // if the library or a camera is unavailable.
 (function () {
     document.addEventListener('DOMContentLoaded', function () {
         const inputs = document.querySelectorAll('input[data-scan]');
-        if (!inputs.length || !window.Html5Qrcode) return;
+        const findBtn = document.getElementById('scanFind');
+        if ((!inputs.length && !findBtn) || !window.Html5Qrcode) return;
 
         const modalEl = document.getElementById('scanModal');
         const modal = window.bootstrap ? new window.bootstrap.Modal(modalEl) : null;
@@ -13,6 +15,15 @@
         const F = window.Html5QrcodeSupportedFormats;
         let scanner = null;
         let targetInput = null;
+        let findUrl = null;
+
+        if (findBtn) {
+            findBtn.addEventListener('click', function () {
+                targetInput = null;
+                findUrl = findBtn.getAttribute('data-find-url');
+                if (modal) modal.show();
+            });
+        }
 
         function formatsFor(kind) {
             if (kind === 'isbn') return [F.EAN_13, F.EAN_8];
@@ -33,13 +44,23 @@
             btn.innerHTML = '<i class="bi bi-camera"></i>';
             btn.addEventListener('click', function () {
                 targetInput = input;
+                findUrl = null;
                 if (modal) modal.show();
             });
             group.appendChild(btn);
         });
 
         function onDecode(text) {
-            if (targetInput) targetInput.value = text;
+            if (findUrl) {
+                window.location.href = findUrl + '?code=' + encodeURIComponent(text);
+                return;
+            }
+            if (targetInput) {
+                targetInput.value = text;
+                // Notify listeners (e.g. lookup.js auto-fill) that a code was scanned.
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+                targetInput.dispatchEvent(new CustomEvent('cms:scanned', { bubbles: true, detail: text }));
+            }
             if (modal) modal.hide();
         }
 

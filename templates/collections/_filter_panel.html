@@ -1,4 +1,5 @@
 {# Filter form for the items tab. Submits via GET so the URL is shareable. #}
+{% load i18n %}
 <form method="get" class="row g-2 align-items-end">
     {% for field in filter_form %}
     <div class="col-sm-6 col-lg-3">
@@ -8,7 +9,7 @@
     </div>
     {% endfor %}
     <div class="col-12 d-flex gap-2 mt-2">
-        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filtern</button>
-        <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary btn-sm">Zurücksetzen</a>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> {% trans "Filtern" %}</button>
+        <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary btn-sm">{% trans "Zurücksetzen" %}</a>
     </div>
 </form>

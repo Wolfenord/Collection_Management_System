@@ -1,8 +1,28 @@
 # Deployment Guide — Collection Management System
 
 The app runs on SQLite in development and on PostgreSQL in production, switched
-entirely via environment variables (no code changes). Static files are served by
+entirely via configuration (no code changes). Static files are served by
 WhiteNoise; the WSGI server is Gunicorn.
+
+## Configuration layers
+
+There are two kinds of configuration, resolved in this order:
+
+1. **Deployment settings** (database, e-mail, security flags — fixed at process
+   start): environment variables / `.env` **>** `config.ini` **>** code default.
+   Use whichever suits your setup — both carry the same keys
+   (`DB_ENGINE=postgres` ≙ `[database] db_engine = postgres`). Copy
+   `config.example.ini` to `config.ini` for the INI variant, or
+   `.env.production.example` to `.env` for the env variant. The INI path can be
+   overridden with `CMS_CONFIG_FILE=/etc/cms/config.ini`.
+2. **Runtime settings** (maintenance mode, JSON API on/off — see `API.md` —
+   page size, loan period, registration open/closed and approval policy,
+   upload limits, default currency, lookup timeouts): stored in the
+   **database** and editable
+   while the app is running — as a staff user via *Systemeinstellungen* in the
+   user menu (or in the Django admin under *Systemeinstellungen*). Changes take
+   effect immediately, no restart. Defaults can be pre-seeded in the
+   `[app-defaults]` section of `config.ini`; a value saved in the UI wins.
 
 ## 1. PostgreSQL
 
@@ -57,7 +77,19 @@ Example nginx location for uploads:
 location /media/ { alias /path/to/app/media/; }
 ```
 
-## 5. Verify the deployment
+## 5. Periodic jobs (cron)
+
+Two management commands are meant to run on a schedule; both are no-ops unless
+the corresponding runtime settings are enabled/configured in the web UI:
+
+```cron
+# daily at 07:00: e-mail owners about overdue loans (loan_reminders_enabled)
+0 7 * * *  cd /path/to/app && .venv/bin/python manage.py send_loan_reminders
+# daily at 03:00: permanently delete trashed items past trash_retention_days
+0 3 * * *  cd /path/to/app && .venv/bin/python manage.py purge_trash
+```
+
+## 6. Verify the deployment
 
 ```bash
 python manage.py check --deploy   # should report no issues with the prod env

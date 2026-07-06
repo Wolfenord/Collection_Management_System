@@ -1,44 +1,46 @@
 {% extends 'base.html' %}
-{% block title %}Statistik · {{ collection.name }}{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Statistik" %} · {{ collection.name }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">{% trans "Sammlungen" %}</a></li>
     <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
-    <li class="breadcrumb-item active">Statistik</li>
+    <li class="breadcrumb-item active">{% trans "Statistik" %}</li>
 </ol></nav>
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h1 class="h3 mb-0">Statistik: {{ collection.name }}</h1>
+    <h1 class="h3 mb-0">{% blocktrans with name=collection.name %}Statistik: {{ name }}{% endblocktrans %}</h1>
     <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left"></i> Zur Sammlung
+        <i class="bi bi-arrow-left"></i> {% trans "Zur Sammlung" %}
     </a>
 </div>
 
 {% if active_filters %}
 <div class="alert alert-info py-2 small">
-    <i class="bi bi-funnel"></i> Auswertung über die <strong>gefilterte</strong> Teilmenge
-    ({{ active_filters }} Filter aktiv). <a href="{% url 'collection_statistics' collection.pk %}">Ganze Sammlung</a>
+    <i class="bi bi-funnel"></i>
+    {% blocktrans count counter=active_filters %}Auswertung über die <strong>gefilterte</strong> Teilmenge ({{ counter }} Filter aktiv).{% plural %}Auswertung über die <strong>gefilterte</strong> Teilmenge ({{ counter }} Filter aktiv).{% endblocktrans %}
+    <a href="{% url 'collection_statistics' collection.pk %}">{% trans "Ganze Sammlung" %}</a>
 </div>
 {% endif %}
 
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-lg-3">
         <div class="card text-bg-primary shadow-sm"><div class="card-body">
-            <div class="h2 mb-0">{{ stats.total_items }}</div><div>Gegenstände</div>
+            <div class="h2 mb-0">{{ stats.total_items }}</div><div>{% trans "Gegenstände" %}</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-lg-3">
         <div class="card text-bg-success shadow-sm"><div class="card-body">
-            <div class="h2 mb-0">{{ total_value|floatformat:2 }} €</div><div>Gesamtwert (Preisfelder)</div>
+            <div class="h2 mb-0">{{ total_value|floatformat:2 }} €</div><div>{% trans "Gesamtwert (Preisfelder)" %}</div>
         </div></div>
     </div>
 </div>
 
 {% if stats.numeric %}
-<h2 class="h5 mb-2">Zahlen-Auswertungen</h2>
+<h2 class="h5 mb-2">{% trans "Zahlen-Auswertungen" %}</h2>
 <div class="table-responsive bg-white rounded shadow-sm mb-4">
     <table class="table table-sm align-middle mb-0">
-        <thead class="table-light"><tr><th>Feld</th><th class="text-end">Summe</th><th class="text-end">Ø</th><th class="text-end">Min</th><th class="text-end">Max</th><th class="text-end">Anzahl</th></tr></thead>
+        <thead class="table-light"><tr><th>{% trans "Feld" %}</th><th class="text-end">{% trans "Summe" %}</th><th class="text-end">{% trans "Ø" %}</th><th class="text-end">{% trans "Min" %}</th><th class="text-end">{% trans "Max" %}</th><th class="text-end">{% trans "Anzahl" %}</th></tr></thead>
         <tbody>
             {% for n in stats.numeric %}
             <tr>
@@ -65,7 +67,7 @@
 <div class="row g-3">
     <div class="col-lg-5">
         <div class="card shadow-sm h-100"><div class="card-body">
-            <h2 class="h6">Gegenstände je Art</h2>
+            <h2 class="h6">{% trans "Gegenstände je Art" %}</h2>
             {% if stats.type_rows %}
             <canvas id="typeChart" height="220"></canvas>
             <table class="table table-sm mt-3 mb-0">
@@ -75,12 +77,12 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% else %}<p class="text-muted mb-0">Keine Daten.</p>{% endif %}
+            {% else %}<p class="text-muted mb-0">{% trans "Keine Daten." %}</p>{% endif %}
         </div></div>
     </div>
     <div class="col-lg-7">
         <div class="card shadow-sm h-100"><div class="card-body">
-            <h2 class="h6">Verteilungen</h2>
+            <h2 class="h6">{% trans "Verteilungen" %}</h2>
             {% if stats.distributions %}
                 {% for dist in stats.distributions %}
                 <div class="mb-3">
@@ -97,7 +99,7 @@
                     {% endfor %}
                 </div>
                 {% endfor %}
-            {% else %}<p class="text-muted mb-0">Keine Auswahlfelder zum Auswerten.</p>{% endif %}
+            {% else %}<p class="text-muted mb-0">{% trans "Keine Auswahlfelder zum Auswerten." %}</p>{% endif %}
         </div></div>
     </div>
 </div>

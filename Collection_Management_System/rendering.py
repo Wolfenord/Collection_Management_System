@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.utils.translation import gettext as _
+
 from .models import FieldType
 
 
@@ -22,9 +24,9 @@ def render_cell(field, raw) -> Cell:
     if t == FieldType.IMAGE and isinstance(raw, dict):
         return Cell('image', raw.get('name', ''), raw.get('url', ''))
     if t == FieldType.FILE and isinstance(raw, dict):
-        return Cell('file', raw.get('name', 'Datei'), raw.get('url', ''))
+        return Cell('file', raw.get('name', _('Datei')), raw.get('url', ''))
     if t == FieldType.BOOLEAN:
-        return Cell('bool', 'Ja' if raw else 'Nein')
+        return Cell('bool', _('Ja') if raw else _('Nein'))
     if t == FieldType.PRICE:
         currency = (field.config or {}).get('currency', 'EUR')
         try:

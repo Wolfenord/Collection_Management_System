@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}Neue Sammlung · CMS{% endblock %}
+{% load i18n %}
+{% block title %}{% if collection %}{{ title }}{% else %}{% trans "Neue Sammlung" %}{% endif %} · CMS{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-7">
-        <h1 class="h3 mb-3">Neue Sammlung</h1>
+        <h1 class="h3 mb-3">{% if collection %}{{ title }}{% else %}{% trans "Neue Sammlung" %}{% endif %}</h1>
         <div class="card shadow-sm"><div class="card-body p-4">
             <form method="post" novalidate>
                 {% csrf_token %}
@@ -15,14 +16,21 @@
                     {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
                 </div>
                 {% endfor %}
+                {% if not collection %}
                 <div class="alert alert-info small">
                     <i class="bi bi-info-circle"></i>
-                    Ohne Vorlage startet die Sammlung mit Standardspalten (Name, Ort, Kaufdatum, Preis, Beleg, Bild).
-                    Felder lassen sich jederzeit hinzufügen, ändern oder entfernen.
+                    {% trans "Ohne Vorlage startet die Sammlung mit Standardspalten (Name, Ort, Kaufdatum, Preis, Beleg, Bild). Felder lassen sich jederzeit hinzufügen, ändern oder entfernen." %}
                 </div>
+                {% endif %}
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">Sammlung erstellen</button>
-                    <a href="{% url 'collection_list' %}" class="btn btn-outline-secondary">Abbrechen</a>
+                    <button type="submit" class="btn btn-primary">
+                        {% if collection %}{% trans "Speichern" %}{% else %}{% trans "Sammlung erstellen" %}{% endif %}
+                    </button>
+                    {% if collection %}
+                    <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
+                    {% else %}
+                    <a href="{% url 'collection_list' %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
+                    {% endif %}
                 </div>
             </form>
         </div></div>

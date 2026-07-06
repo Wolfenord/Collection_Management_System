@@ -1,3 +1,4 @@
+{% load i18n %}
 {% if collections %}
 <div class="row g-3">
     {% for collection in collections %}
@@ -11,13 +12,13 @@
                         </a>
                     </h3>
                     {% if collection.owner_id != request.user.id %}
-                    <span class="badge text-bg-info">geteilt</span>
+                    <span class="badge text-bg-info">{% trans "geteilt" %}</span>
                     {% endif %}
                 </div>
-                <p class="card-text text-muted small">{{ collection.description|default:'Keine Beschreibung.'|truncatewords:20 }}</p>
+                <p class="card-text text-muted small">{{ collection.description|default:_("Keine Beschreibung.")|truncatewords:20 }}</p>
             </div>
             <div class="card-footer bg-transparent d-flex justify-content-between small text-muted">
-                <span><i class="bi bi-box-seam"></i> {{ collection.item_count }} Gegenstände</span>
+                <span><i class="bi bi-box-seam"></i> {% blocktrans count counter=collection.item_count %}{{ counter }} Gegenstand{% plural %}{{ counter }} Gegenstände{% endblocktrans %}</span>
                 <span>{{ collection.owner }}</span>
             </div>
         </div>
@@ -27,7 +28,7 @@
 {% else %}
 <div class="text-center text-muted py-5 border rounded bg-white">
     <i class="bi bi-collection display-5 d-block mb-2"></i>
-    Noch keine Sammlungen.
-    <a href="{% url 'collection_create' %}">Erstelle deine erste Sammlung.</a>
+    {% trans "Noch keine Sammlungen." %}
+    <a href="{% url 'collection_create' %}">{% trans "Erstelle deine erste Sammlung." %}</a>
 </div>
 {% endif %}

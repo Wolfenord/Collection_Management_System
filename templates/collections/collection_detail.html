@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
+{% load static i18n %}
 {% block title %}{{ collection.name }} · CMS{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">{% trans "Sammlungen" %}</a></li>
         <li class="breadcrumb-item active">{{ collection.name }}</li>
     </ol>
 </nav>
@@ -11,34 +12,46 @@
 <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2" data-tour-auto="collection">
     <div>
         <h1 class="h3 mb-1">{{ collection.name }}</h1>
-        <p class="text-muted mb-0">{{ collection.description|default:'Keine Beschreibung.' }}</p>
+        <p class="text-muted mb-0">{{ collection.description|default:_("Keine Beschreibung.") }}</p>
     </div>
     <div class="d-flex gap-2">
         <span class="badge text-bg-secondary text-uppercase align-self-center">{{ permission }}</span>
+        {% if can_edit %}
+        <a href="{% url 'collection_edit' collection.pk %}" class="btn btn-outline-secondary"
+           title="{% trans 'Name und Beschreibung der Sammlung ändern' %}">
+            <i class="bi bi-pencil"></i> {% trans "Bearbeiten" %}
+        </a>
+        {% endif %}
+        {% if permission == 'owner' %}
+        <a href="{% url 'collection_delete' collection.pk %}" class="btn btn-outline-danger"
+           title="{% trans 'Sammlung endgültig löschen' %}">
+            <i class="bi bi-trash"></i>
+        </a>
+        {% endif %}
         <a href="{% url 'collection_statistics' collection.pk %}" class="btn btn-outline-secondary"
-           data-intro="Auswertungen deiner Sammlung: Summen, Durchschnitte und Verteilungen – dynamisch aus deinen Feldern." data-step="6">
-            <i class="bi bi-bar-chart"></i> Statistik
+           data-intro="{% trans 'Auswertungen deiner Sammlung: Summen, Durchschnitte und Verteilungen – dynamisch aus deinen Feldern.' %}" data-step="6">
+            <i class="bi bi-bar-chart"></i> {% trans "Statistik" %}
         </a>
         {% if permission == 'owner' %}
         <a href="{% url 'collection_shares' collection.pk %}" class="btn btn-outline-secondary"
-           data-intro="Gib die Sammlung für andere Nutzer frei – nur ansehen oder auch bearbeiten." data-step="7">
-            <i class="bi bi-people"></i> Teilen
+           data-intro="{% trans 'Gib die Sammlung für andere Nutzer frei – nur ansehen oder auch bearbeiten.' %}" data-step="7">
+            <i class="bi bi-people"></i> {% trans "Teilen" %}
         </a>
         {% endif %}
         {% if can_edit %}
         <a href="{% url 'item_create' collection.pk %}" class="btn btn-primary"
-           data-intro="Lege hier einen neuen Gegenstand an. Das Formular passt sich automatisch an deine Felder an." data-step="2">
-            <i class="bi bi-plus-lg"></i> Gegenstand
+           data-intro="{% trans 'Lege hier einen neuen Gegenstand an. Das Formular passt sich automatisch an deine Felder an.' %}" data-step="2">
+            <i class="bi bi-plus-lg"></i> {% trans "Gegenstand" %}
         </a>
         {% endif %}
     </div>
 </div>
 
 <ul class="nav nav-tabs mb-3" role="tablist"
-    data-intro="Drei Bereiche: <strong>Gegenstände</strong> (deine Einträge), <strong>Felder</strong> (die Spalten) und <strong>Arten</strong> (Typen mit eigenen Pflichtfeldern)." data-step="1">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button">Gegenstände ({{ item_count }})</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fields" type="button">Felder ({{ fields|length }})</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-types" type="button">Arten ({{ item_types|length }})</button></li>
+    data-intro="{% trans 'Drei Bereiche: <strong>Gegenstände</strong> (deine Einträge), <strong>Felder</strong> (die Spalten) und <strong>Arten</strong> (Typen mit eigenen Pflichtfeldern).' %}" data-step="1">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button">{% trans "Gegenstände" %} ({{ item_count }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fields" type="button">{% trans "Felder" %} ({{ fields|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-types" type="button">{% trans "Arten" %} ({{ item_types|length }})</button></li>
 </ul>
 
 <div class="tab-content">
@@ -47,37 +60,60 @@
         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <div class="text-muted small">
                 {% if active_filters %}
-                    <strong>{{ result_count }}</strong> von {{ item_count }} Gegenständen
-                    <span class="badge text-bg-primary">{{ active_filters }} Filter aktiv</span>
+                    {% blocktrans %}<strong>{{ result_count }}</strong> von {{ item_count }} Gegenständen{% endblocktrans %}
+                    <span class="badge text-bg-primary">{% blocktrans count counter=active_filters %}{{ counter }} Filter aktiv{% plural %}{{ counter }} Filter aktiv{% endblocktrans %}</span>
                 {% else %}
-                    {{ item_count }} Gegenstände
+                    {% blocktrans count counter=item_count %}{{ counter }} Gegenstand{% plural %}{{ counter }} Gegenstände{% endblocktrans %}
                 {% endif %}
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel"
-                        data-intro="Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und als QR-Code nutzen." data-step="3">
-                    <i class="bi bi-funnel"></i> Filter
+                        data-intro="{% trans 'Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und als QR-Code nutzen.' %}" data-step="3">
+                    <i class="bi bi-funnel"></i> {% trans "Filter" %}
                 </button>
                 <button class="btn btn-sm btn-outline-secondary" type="button"
-                        data-copy="{{ share_url }}" title="Aktuellen Filter als Link kopieren (Basis für QR-Codes)">
-                    <i class="bi bi-link-45deg"></i> Filter-Link kopieren
+                        data-copy="{{ share_url }}" title="{% trans 'Aktuellen Filter als Link kopieren (Basis für QR-Codes)' %}">
+                    <i class="bi bi-link-45deg"></i> {% trans "Filter-Link kopieren" %}
                 </button>
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#qrModal"
-                        data-intro="Erzeuge einen QR-Code für die aktuelle (gefilterte) Ansicht – ideal als Etikett für Regal, Bereich oder Fach." data-step="4">
-                    <i class="bi bi-qr-code"></i> QR
+                        data-intro="{% trans 'Erzeuge einen QR-Code für die aktuelle (gefilterte) Ansicht – ideal als Etikett für Regal, Bereich oder Fach.' %}" data-step="4">
+                    <i class="bi bi-qr-code"></i> {% trans "QR" %}
                 </button>
                 <a class="btn btn-sm btn-outline-success"
                    href="{% url 'collection_export' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-                   title="{% if active_filters %}Gefilterte Ansicht{% else %}Gesamte Sammlung{% endif %} als Excel exportieren"
-                   data-intro="Exportiere die (gefilterte) Sammlung als Excel-Datei – die Spalten entsprechen deinen Feldern." data-step="5">
-                    <i class="bi bi-file-earmark-excel"></i> Export
+                   title="{% if active_filters %}{% trans 'Gefilterte Ansicht als Excel exportieren' %}{% else %}{% trans 'Gesamte Sammlung als Excel exportieren' %}{% endif %}"
+                   data-intro="{% trans 'Exportiere die (gefilterte) Sammlung als Excel-Datei – die Spalten entsprechen deinen Feldern.' %}" data-step="5">
+                    <i class="bi bi-file-earmark-excel"></i> {% trans "Export" %}
                 </a>
                 <a class="btn btn-sm btn-outline-secondary"
                    href="{% url 'collection_labels' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-                   title="QR-Etiketten der {% if active_filters %}gefilterten{% else %}gesamten{% endif %} Auswahl als PDF drucken"
-                   data-intro="Drucke QR-Etiketten (PDF) für die angezeigten Gegenstände – zum Aufkleben auf die Objekte." data-step="5b">
-                    <i class="bi bi-printer"></i> Etiketten
+                   title="{% trans 'QR-Etiketten der Auswahl als PDF drucken' %}"
+                   data-intro="{% trans 'Drucke QR-Etiketten (PDF) für die angezeigten Gegenstände – zum Aufkleben auf die Objekte.' %}" data-step="5b">
+                    <i class="bi bi-printer"></i> {% trans "Etiketten" %}
                 </a>
+                {% if can_edit %}
+                <a class="btn btn-sm btn-outline-success" href="{% url 'collection_import' collection.pk %}"
+                   title="{% trans 'Gegenstände aus Excel/CSV importieren' %}">
+                    <i class="bi bi-file-earmark-arrow-up"></i> {% trans "Import" %}
+                </a>
+                {% endif %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'collection_loans' collection.pk %}"
+                   title="{% trans 'Ausleihen ansehen und verwalten' %}">
+                    <i class="bi bi-arrow-left-right"></i> {% trans "Ausleihen" %}
+                    {% if open_loan_count %}<span class="badge text-bg-warning">{{ open_loan_count }}</span>{% endif %}
+                </a>
+                <button class="btn btn-sm btn-outline-primary" type="button" id="scanFind"
+                        data-find-url="{% url 'item_find' collection.pk %}"
+                        title="{% trans 'Etikett/Barcode/ISBN eines Gegenstands scannen und ihn direkt öffnen' %}">
+                    <i class="bi bi-upc-scan"></i> {% trans "Scannen" %}
+                </button>
+                {% if can_edit and trash_count %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'collection_trash' collection.pk %}"
+                   title="{% trans 'Gelöschte Gegenstände wiederherstellen oder endgültig entfernen' %}">
+                    <i class="bi bi-trash"></i> {% trans "Papierkorb" %}
+                    <span class="badge text-bg-secondary">{{ trash_count }}</span>
+                </a>
+                {% endif %}
             </div>
         </div>
         <div class="collapse {% if active_filters %}show{% endif %} mb-3" id="filterPanel">
@@ -86,18 +122,59 @@
             </div>
         </div>
         {% if rows %}
+        {% if can_edit %}
+        <form method="post" action="{% url 'items_bulk' collection.pk %}" id="bulkForm">
+        {% csrf_token %}
+        <div class="d-none align-items-center gap-2 mb-2 flex-wrap" id="bulkBar">
+            <span class="small text-muted">
+                <span id="bulkCount">0</span> {% trans "ausgewählt" %}
+            </span>
+            {% if item_types %}
+            <select name="item_type" class="form-select form-select-sm w-auto">
+                <option value="">{% trans "— Art entfernen —" %}</option>
+                {% for t in item_types %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+            </select>
+            <button type="submit" name="action" value="set_type" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-tag"></i> {% trans "Art setzen" %}
+            </button>
+            {% endif %}
+            <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger" id="bulkDelete">
+                <i class="bi bi-trash"></i> {% trans "Auswahl löschen" %}
+            </button>
+        </div>
+        {% endif %}
         <div class="table-responsive bg-white rounded shadow-sm">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Art</th>
-                        {% for field in fields %}<th>{{ field.label }}</th>{% endfor %}
+                        {% if can_edit %}
+                        <th style="width:2rem">
+                            <input type="checkbox" class="form-check-input" id="bulkAll"
+                                   title="{% trans 'Alle auswählen' %}" aria-label="{% trans 'Alle auswählen' %}">
+                        </th>
+                        {% endif %}
+                        {% for col in columns %}
+                        <th>
+                            <a href="{{ col.url }}" class="text-decoration-none text-reset"
+                               title="{% trans 'Nach dieser Spalte sortieren' %}">
+                                {{ col.label }}
+                                {% if col.active %}<i class="bi bi-caret-{% if col.desc %}down{% else %}up{% endif %}-fill small"></i>{% endif %}
+                            </a>
+                        </th>
+                        {% endfor %}
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in rows %}
                     <tr>
+                        {% if can_edit %}
+                        <td>
+                            <input type="checkbox" class="form-check-input" name="items"
+                                   value="{{ row.item.pk }}" data-bulk-item
+                                   aria-label="{% trans 'Gegenstand auswählen' %}">
+                        </td>
+                        {% endif %}
                         <td><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
                         {% for cell in row.cells %}
                         <td>
@@ -109,22 +186,48 @@
                         </td>
                         {% endfor %}
                         <td class="text-end">
-                            <a href="{% url 'item_detail' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-secondary">Details</a>
+                            <a href="{% url 'item_detail' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% if can_edit %}</form>{% endif %}
+        {% if page_obj.has_other_pages %}
+        <nav class="mt-3" aria-label="{% trans 'Seiten' %}">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="{% querystring page=page_obj.previous_page_number %}">&laquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+                {% for num in page_range %}
+                    {% if num == page_obj.paginator.ELLIPSIS %}
+                    <li class="page-item disabled"><span class="page-link">{{ num }}</span></li>
+                    {% elif num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{% querystring page=num %}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="{% querystring page=page_obj.next_page_number %}">&raquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
         {% else %}
         <div class="text-center text-muted py-5 border rounded bg-white">
             <i class="bi bi-box-seam display-5 d-block mb-2"></i>
             {% if active_filters %}
-                Keine Treffer für die aktuellen Filter.
-                <a href="{% url 'collection_detail' collection.pk %}">Filter zurücksetzen</a>
+                {% trans "Keine Treffer für die aktuellen Filter." %}
+                <a href="{% url 'collection_detail' collection.pk %}">{% trans "Filter zurücksetzen" %}</a>
             {% else %}
-                Noch keine Gegenstände.
-                {% if can_edit %}<a href="{% url 'item_create' collection.pk %}">Füge den ersten hinzu.</a>{% endif %}
+                {% trans "Noch keine Gegenstände." %}
+                {% if can_edit %}<a href="{% url 'item_create' collection.pk %}">{% trans "Füge den ersten hinzu." %}</a>{% endif %}
             {% endif %}
         </div>
         {% endif %}
@@ -132,25 +235,35 @@
 
     <!-- Fields -->
     <div class="tab-pane fade" id="tab-fields">
+        {% if can_edit %}
+        <!-- External-database auto-fill: always on, all sources are queried -->
+        <div class="card shadow-sm mb-3"><div class="card-body">
+            <h2 class="h6"><i class="bi bi-magic"></i> {% trans "Automatische Suche in externen Datenbanken" %}</h2>
+            <p class="text-muted small mb-0">
+                {% blocktrans with sources=lookup_provider_label %}Beim Anlegen eines Gegenstands werden automatisch <strong>alle verfügbaren Datenbanken</strong> ({{ sources }}) durchsucht – per Code-Scan (z. B. ISBN) oder über die Vorschlagssuche in den Eingabefeldern. Befüllt wird jedes Feld, dem eine Zuordnung gegeben wurde (Feld bearbeiten → „Automatisch befüllen mit“).{% endblocktrans %}
+            </p>
+        </div></div>
+        {% endif %}
         <div class="bg-white rounded shadow-sm p-3">
             {% if can_edit %}
-            <div class="text-end mb-2"><a href="{% url 'field_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Feld</a></div>
+            <div class="text-end mb-2"><a href="{% url 'field_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Feld" %}</a></div>
             {% endif %}
-            {% if can_edit %}<p class="text-muted small mb-1"><i class="bi bi-grip-vertical"></i> Zeilen ziehen, um die Spaltenreihenfolge zu ändern.</p>{% endif %}
+            {% if can_edit %}<p class="text-muted small mb-1"><i class="bi bi-grip-vertical"></i> {% trans "Zeilen ziehen, um die Spaltenreihenfolge zu ändern." %}</p>{% endif %}
             <table class="table table-sm align-middle mb-0">
-                <thead class="table-light"><tr>{% if can_edit %}<th></th>{% endif %}<th>Bezeichnung</th><th>Schlüssel</th><th>Typ</th><th>Pflicht</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+                <thead class="table-light"><tr>{% if can_edit %}<th></th>{% endif %}<th>{% trans "Bezeichnung" %}</th><th>{% trans "Schlüssel" %}</th><th>{% trans "Typ" %}</th><th>{% trans "Pflicht" %}</th><th>{% trans "Auto-Fill" %}</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
                 <tbody id="fieldsSortable"{% if can_edit %} data-reorder-url="{% url 'field_reorder' collection.pk %}"{% endif %}>
                     {% for field in fields %}
                     <tr data-field-id="{{ field.pk }}">
                         {% if can_edit %}<td class="drag-handle text-muted" style="cursor:grab"><i class="bi bi-grip-vertical"></i></td>{% endif %}
-                        <td>{{ field.label }}{% if field.is_system %} <span class="badge text-bg-light">Standard</span>{% endif %}</td>
+                        <td>{{ field.label }}{% if field.is_system %} <span class="badge text-bg-light">{% trans "Standard" %}</span>{% endif %}</td>
                         <td><code>{{ field.key }}</code></td>
                         <td>{{ field.get_field_type_display }}</td>
                         <td>{% if field.required %}<i class="bi bi-check-lg text-success"></i>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+                        <td>{% if field.lookup_label %}<span class="badge text-bg-info">{{ field.lookup_label }}</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
                         {% if can_edit %}
                         <td class="text-end">
-                            <a href="{% url 'field_edit' collection.pk field.pk %}" class="btn btn-sm btn-outline-secondary">Bearbeiten</a>
-                            <a href="{% url 'field_delete' collection.pk field.pk %}" class="btn btn-sm btn-outline-danger">Löschen</a>
+                            <a href="{% url 'field_edit' collection.pk field.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Bearbeiten" %}</a>
+                            <a href="{% url 'field_delete' collection.pk field.pk %}" class="btn btn-sm btn-outline-danger">{% trans "Löschen" %}</a>
                         </td>
                         {% endif %}
                     </tr>
@@ -164,7 +277,7 @@
     <div class="tab-pane fade" id="tab-types">
         <div class="bg-white rounded shadow-sm p-3">
             {% if can_edit %}
-            <div class="text-end mb-2"><a href="{% url 'type_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Art</a></div>
+            <div class="text-end mb-2"><a href="{% url 'type_create' collection.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Art" %}</a></div>
             {% endif %}
             {% if item_types %}
             <ul class="list-group">
@@ -173,13 +286,13 @@
                     <strong>{{ t.name }}</strong>
                     {% if t.description %}<div class="text-muted small">{{ t.description }}</div>{% endif %}
                     {% with reqs=t.required_fields.all %}
-                    {% if reqs %}<div class="small">Pflichtfelder: {% for f in reqs %}<span class="badge text-bg-light">{{ f.label }}</span> {% endfor %}</div>{% endif %}
+                    {% if reqs %}<div class="small">{% trans "Pflichtfelder:" %} {% for f in reqs %}<span class="badge text-bg-light">{{ f.label }}</span> {% endfor %}</div>{% endif %}
                     {% endwith %}
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-muted mb-0">Noch keine Arten definiert. Arten erlauben es, je Typ unterschiedliche Pflichtfelder festzulegen.</p>
+            <p class="text-muted mb-0">{% trans "Noch keine Arten definiert. Arten erlauben es, je Typ unterschiedliche Pflichtfelder festzulegen." %}</p>
             {% endif %}
         </div>
     </div>
@@ -190,22 +303,38 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">QR-Code für diese Ansicht{% if active_filters %} (gefiltert){% endif %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                <h5 class="modal-title">{% if active_filters %}{% trans "QR-Code für diese Ansicht (gefiltert)" %}{% else %}{% trans "QR-Code für diese Ansicht" %}{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Schließen' %}"></button>
             </div>
             <div class="modal-body text-center">
                 <img src="{% url 'collection_qr' collection.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-                     class="img-fluid" alt="QR-Code" style="max-width:280px">
+                     class="img-fluid" alt="{% trans 'QR-Code' %}" style="max-width:280px">
                 <p class="text-muted small mt-2 mb-0">
-                    Scannen öffnet genau diese {% if active_filters %}gefilterte {% endif %}Liste –
-                    ideal als Etikett für Regal, Bereich oder Fach.
+                    {% trans "Scannen öffnet genau diese Liste – ideal als Etikett für Regal, Bereich oder Fach." %}
                 </p>
             </div>
             <div class="modal-footer">
                 <a class="btn btn-primary btn-sm"
                    href="{% url 'collection_qr' collection.pk %}?download=1{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">
-                    <i class="bi bi-download"></i> Herunterladen
+                    <i class="bi bi-download"></i> {% trans "Herunterladen" %}
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Camera scan modal for scan-to-find (#scanFind) -->
+<div class="modal fade" id="scanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Gegenstand scannen" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Schließen' %}"></button>
+            </div>
+            <div class="modal-body">
+                <div id="scanRegion" style="width:100%"></div>
+                <div id="scanError" class="alert alert-warning mt-2 d-none mb-0 small"></div>
+                <p class="text-muted small mt-2 mb-0">{% trans "Halte das Etikett, den Barcode oder die ISBN vor die Kamera – der passende Gegenstand wird geöffnet." %}</p>
             </div>
         </div>
     </div>
@@ -213,7 +342,44 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'js/scanner.js' %}"></script>
 {% if can_edit %}
+<script>
+// Bulk selection: toggle the action bar, keep the counter in sync, confirm deletes.
+(function () {
+    const form = document.getElementById('bulkForm');
+    if (!form) return;
+    const bar = document.getElementById('bulkBar');
+    const all = document.getElementById('bulkAll');
+    const count = document.getElementById('bulkCount');
+    const boxes = Array.from(form.querySelectorAll('[data-bulk-item]'));
+
+    function sync() {
+        const checked = boxes.filter(function (b) { return b.checked; }).length;
+        count.textContent = checked;
+        bar.classList.toggle('d-none', checked === 0);
+        bar.classList.toggle('d-flex', checked > 0);
+        if (all) {
+            all.checked = checked > 0 && checked === boxes.length;
+            all.indeterminate = checked > 0 && checked < boxes.length;
+        }
+    }
+    boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    if (all) {
+        all.addEventListener('change', function () {
+            boxes.forEach(function (b) { b.checked = all.checked; });
+            sync();
+        });
+    }
+    form.addEventListener('submit', function (e) {
+        if (e.submitter && e.submitter.id === 'bulkDelete' &&
+            !window.confirm('{% trans "Ausgewählte Gegenstände endgültig löschen?" %}')) {
+            e.preventDefault();
+        }
+    });
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {

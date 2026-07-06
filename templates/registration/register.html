@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}Registrieren · CMS{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Registrieren" %} · CMS{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="h4 mb-3">Konto erstellen</h1>
+                <h1 class="h4 mb-3">{% trans "Konto erstellen" %}</h1>
+                <div class="alert alert-info small">
+                    {% trans "Neue Konten werden erst nach Freigabe durch einen Administrator aktiv. Nach der Registrierung kannst du dich anmelden, sobald deine Freigabe erfolgt ist." %}
+                </div>
                 <form method="post" novalidate>
                     {% csrf_token %}
                     {% for field in form %}
@@ -20,10 +24,10 @@
                         {% endfor %}
                     </div>
                     {% endfor %}
-                    <button type="submit" class="btn btn-primary w-100">Registrieren</button>
+                    <button type="submit" class="btn btn-primary w-100">{% trans "Registrieren" %}</button>
                 </form>
                 <p class="text-center mt-3 mb-0 small">
-                    Schon ein Konto? <a href="{% url 'login' %}">Anmelden</a>
+                    {% trans "Schon ein Konto?" %} <a href="{% url 'login' %}">{% trans "Anmelden" %}</a>
                 </p>
             </div>
         </div>

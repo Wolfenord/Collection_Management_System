@@ -14,6 +14,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
+from django.utils.translation import gettext as _
+
 from .codes import item_short_code
 from .models import FieldType
 
@@ -30,7 +32,7 @@ def _cell_value(field, raw, build_uri):
         url = raw.get('url', '')
         return build_uri(url) if url else raw.get('name', '')
     if t == FieldType.BOOLEAN:
-        return 'Ja' if raw else 'Nein'
+        return _('Ja') if raw else _('Nein')
     if t == FieldType.MULTICHOICE and isinstance(raw, list):
         return ', '.join(str(v) for v in raw)
     if t in NUMERIC_TYPES:
@@ -47,7 +49,7 @@ def build_workbook(collection, items, fields, build_uri) -> bytes:
     ws = wb.active
     ws.title = (_INVALID_SHEET.sub('', collection.name) or 'Export')[:31]
 
-    headers = ['ID', 'Art'] + [f.label for f in fields]
+    headers = [_('ID'), _('Art')] + [f.label for f in fields]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from django import forms
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
 
 from .models import FieldType
 
@@ -19,7 +20,7 @@ TEXTLIKE_TYPES = {
 }
 NUMERIC_TYPES = {FieldType.NUMBER, FieldType.YEAR, FieldType.DECIMAL, FieldType.PRICE}
 RANGE_DATE_TYPES = {FieldType.DATE, FieldType.DATETIME}
-BOOL_CHOICES = [('', 'Alle'), ('true', 'Ja'), ('false', 'Nein')]
+BOOL_CHOICES = [('', _('Alle')), ('true', _('Ja')), ('false', _('Nein'))]
 
 
 class ItemFilterForm(forms.Form):
@@ -31,13 +32,13 @@ class ItemFilterForm(forms.Form):
         self.field_defs = list(collection.fields.all())
 
         self.fields['q'] = forms.CharField(
-            required=False, label='Suche',
-            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Volltextsuche…'}),
+            required=False, label=_('Suche'),
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Volltextsuche…')}),
         )
         item_types = collection.item_types.all()
         if item_types:
             self.fields['type'] = forms.ModelChoiceField(
-                queryset=item_types, required=False, label='Art', empty_label='Alle Arten',
+                queryset=item_types, required=False, label=_('Art'), empty_label=_('Alle Arten'),
                 widget=forms.Select(attrs={'class': 'form-select'}),
             )
 
@@ -49,7 +50,7 @@ class ItemFilterForm(forms.Form):
         sel = {'class': 'form-select'}
         ctl = {'class': 'form-control'}
         if t in (FieldType.CHOICE, FieldType.MULTICHOICE):
-            choices = [('', 'Alle')] + [(c, c) for c in (fd.config or {}).get('choices', [])]
+            choices = [('', _('Alle'))] + [(c, c) for c in (fd.config or {}).get('choices', [])]
             self.fields[f'f_{fd.key}'] = forms.ChoiceField(
                 choices=choices, required=False, label=fd.label, widget=forms.Select(attrs=sel))
         elif t == FieldType.BOOLEAN:
@@ -57,15 +58,17 @@ class ItemFilterForm(forms.Form):
                 choices=BOOL_CHOICES, required=False, label=fd.label, widget=forms.Select(attrs=sel))
         elif t in NUMERIC_TYPES:
             self.fields[f'min_{fd.key}'] = forms.DecimalField(
-                required=False, label=f'{fd.label} von', widget=forms.NumberInput(attrs={**ctl, 'step': 'any'}))
+                required=False, label=_('%(label)s von') % {'label': fd.label},
+                widget=forms.NumberInput(attrs={**ctl, 'step': 'any'}))
             self.fields[f'max_{fd.key}'] = forms.DecimalField(
-                required=False, label=f'{fd.label} bis', widget=forms.NumberInput(attrs={**ctl, 'step': 'any'}))
+                required=False, label=_('%(label)s bis') % {'label': fd.label},
+                widget=forms.NumberInput(attrs={**ctl, 'step': 'any'}))
         elif t in RANGE_DATE_TYPES:
             self.fields[f'from_{fd.key}'] = forms.DateField(
-                required=False, label=f'{fd.label} von',
+                required=False, label=_('%(label)s von') % {'label': fd.label},
                 widget=forms.DateInput(attrs={**ctl, 'type': 'date'}, format='%Y-%m-%d'))
             self.fields[f'to_{fd.key}'] = forms.DateField(
-                required=False, label=f'{fd.label} bis',
+                required=False, label=_('%(label)s bis') % {'label': fd.label},
                 widget=forms.DateInput(attrs={**ctl, 'type': 'date'}, format='%Y-%m-%d'))
         elif t in TEXTLIKE_TYPES:
             self.fields[f'f_{fd.key}'] = forms.CharField(

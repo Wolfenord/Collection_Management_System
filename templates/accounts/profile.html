@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Mein Profil" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3"><i class="bi bi-person-circle"></i> {% trans "Mein Profil" %}</h1>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% include 'collections/_form_fields.html' %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">{% trans "Speichern" %}</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-2"><i class="bi bi-key-fill"></i> {% trans "API-Tokens" %}</h2>
+                {% if site_config.api_enabled %}
+                <p class="text-body-secondary small">
+                    {% blocktrans %}Persönliche Zugangsschlüssel für die JSON-API
+                    (Header „Authorization: Bearer &lt;token&gt;“). Der Schlüssel wird
+                    nur direkt nach dem Erstellen einmal angezeigt.{% endblocktrans %}
+                </p>
+                {% else %}
+                <p class="text-body-secondary small">
+                    {% trans "Die API ist derzeit deaktiviert (Systemeinstellung „JSON-API aktivieren“)." %}
+                </p>
+                {% endif %}
+                {% if api_tokens %}
+                <ul class="list-group mb-3">
+                    {% for token in api_tokens %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            {{ token.name }}
+                            <small class="text-body-secondary d-block">
+                                {% trans "Erstellt" %}: {{ token.created_at|date:"SHORT_DATE_FORMAT" }}
+                                · {% trans "Zuletzt verwendet" %}:
+                                {{ token.last_used_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}
+                            </small>
+                        </span>
+                        <form method="post" action="{% url 'token_delete' token.pk %}"
+                              onsubmit="return confirm('{% trans "Token wirklich widerrufen?" %}');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Widerrufen" %}</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                <form method="post" action="{% url 'token_create' %}" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="name" class="form-control form-control-sm"
+                           placeholder="{% trans 'Bezeichnung, z. B. Skript auf dem NAS' %}" maxlength="100">
+                    <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+                        <i class="bi bi-plus-lg"></i> {% trans "Token erstellen" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,31 +1,32 @@
 {% extends 'base.html' %}
-{% block title %}Freigaben · {{ collection.name }}{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Freigaben" %} · {{ collection.name }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb"><ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">Sammlungen</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'collection_list' %}">{% trans "Sammlungen" %}</a></li>
     <li class="breadcrumb-item"><a href="{% url 'collection_detail' collection.pk %}">{{ collection.name }}</a></li>
-    <li class="breadcrumb-item active">Freigaben</li>
+    <li class="breadcrumb-item active">{% trans "Freigaben" %}</li>
 </ol></nav>
 
-<h1 class="h3 mb-3">Freigaben: {{ collection.name }}</h1>
+<h1 class="h3 mb-3">{% blocktrans with name=collection.name %}Freigaben: {{ name }}{% endblocktrans %}</h1>
 
 <div class="row g-3">
     <div class="col-lg-5">
         <div class="card shadow-sm"><div class="card-body">
-            <h2 class="h6 mb-3">Nutzer hinzufügen</h2>
+            <h2 class="h6 mb-3">{% trans "Nutzer hinzufügen" %}</h2>
             <form method="post">
                 {% csrf_token %}
                 {% include 'collections/_form_fields.html' %}
-                <button type="submit" class="btn btn-primary"><i class="bi bi-person-plus"></i> Freigeben</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-person-plus"></i> {% trans "Freigeben" %}</button>
             </form>
         </div></div>
     </div>
     <div class="col-lg-7">
         <div class="card shadow-sm"><div class="card-body">
-            <h2 class="h6 mb-3">Aktuelle Freigaben</h2>
+            <h2 class="h6 mb-3">{% trans "Aktuelle Freigaben" %}</h2>
             {% if shares %}
             <table class="table align-middle mb-0">
-                <thead class="table-light"><tr><th>Nutzer</th><th>Berechtigung</th><th></th></tr></thead>
+                <thead class="table-light"><tr><th>{% trans "Nutzer" %}</th><th>{% trans "Berechtigung" %}</th><th></th></tr></thead>
                 <tbody>
                     {% for share in shares %}
                     <tr>
@@ -38,7 +39,7 @@
                         <td class="text-end">
                             <form method="post" action="{% url 'share_delete' collection.pk share.pk %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Entfernen</button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Entfernen" %}</button>
                             </form>
                         </td>
                     </tr>
@@ -46,7 +47,7 @@
                 </tbody>
             </table>
             {% else %}
-            <p class="text-muted mb-0">Diese Sammlung ist noch nicht freigegeben.</p>
+            <p class="text-muted mb-0">{% trans "Diese Sammlung ist noch nicht freigegeben." %}</p>
             {% endif %}
         </div></div>
     </div>

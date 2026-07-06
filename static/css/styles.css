@@ -14,3 +14,86 @@ body {
 code {
     color: var(--bs-secondary-color);
 }
+
+/* Dark mode: several templates use fixed-light utilities (bg-white, table-light,
+   text-bg-light). Remap them to theme-aware surfaces so the whole UI follows the
+   selected colour theme instead of staying white. */
+[data-bs-theme="dark"] .bg-white {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .table-light {
+    --bs-table-bg: var(--bs-tertiary-bg);
+    --bs-table-color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .text-bg-light {
+    background-color: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Help tour (Intro.js) ships light-only styles: its white tooltip inherits the
+   body text colour, which is near-white in dark mode -> unreadable. Pin the
+   text colour in light mode and restyle the whole tooltip for dark mode. */
+.introjs-tooltip {
+    color: #212529;
+}
+[data-bs-theme="dark"] .introjs-tooltip {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .introjs-tooltip-title {
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .introjs-arrow.top,
+[data-bs-theme="dark"] .introjs-arrow.top-middle,
+[data-bs-theme="dark"] .introjs-arrow.top-right {
+    border-bottom-color: var(--bs-secondary-bg);
+}
+[data-bs-theme="dark"] .introjs-arrow.bottom,
+[data-bs-theme="dark"] .introjs-arrow.bottom-middle,
+[data-bs-theme="dark"] .introjs-arrow.bottom-right {
+    border-top-color: var(--bs-secondary-bg);
+}
+[data-bs-theme="dark"] .introjs-arrow.left,
+[data-bs-theme="dark"] .introjs-arrow.left-bottom {
+    border-right-color: var(--bs-secondary-bg);
+}
+[data-bs-theme="dark"] .introjs-arrow.right,
+[data-bs-theme="dark"] .introjs-arrow.right-bottom {
+    border-left-color: var(--bs-secondary-bg);
+}
+[data-bs-theme="dark"] .introjs-button {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+    text-shadow: none;
+}
+[data-bs-theme="dark"] .introjs-button:hover,
+[data-bs-theme="dark"] .introjs-button:focus,
+[data-bs-theme="dark"] .introjs-button:active {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .introjs-skipbutton {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .introjs-skipbutton:hover,
+[data-bs-theme="dark"] .introjs-skipbutton:focus {
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .introjs-bullets ul li a {
+    background: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .introjs-bullets ul li a.active {
+    background: var(--bs-primary);
+}
+[data-bs-theme="dark"] .introjs-progress {
+    background-color: var(--bs-tertiary-bg);
+}
+/* The dimmed spotlight overlay: keep the highlighted element visible on dark
+   backgrounds instead of a plain white halo. */
+[data-bs-theme="dark"] .introjs-helperLayer {
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 2px var(--bs-primary), rgba(0, 0, 0, 0.7) 0 0 0 5000px !important;
+}
