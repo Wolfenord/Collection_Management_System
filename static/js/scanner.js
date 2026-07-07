@@ -4,6 +4,9 @@
 // Uses html5-qrcode (loaded where needed). Inputs still work manually
 // if the library or a camera is unavailable.
 (function () {
+    // Translations from Django's JavaScriptCatalog (loaded in base.html).
+    const gettext = window.gettext || function (s) { return s; };
+
     document.addEventListener('DOMContentLoaded', function () {
         const inputs = document.querySelectorAll('input[data-scan]');
         const findBtn = document.getElementById('scanFind');
@@ -40,7 +43,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn btn-outline-secondary';
-            btn.title = 'Mit Kamera scannen';
+            btn.title = gettext('Mit Kamera scannen');
             btn.innerHTML = '<i class="bi bi-camera"></i>';
             btn.addEventListener('click', function () {
                 targetInput = input;
@@ -70,13 +73,14 @@
                 formatsToSupport: formatsFor(targetInput && targetInput.getAttribute('data-scan')),
             });
             window.Html5Qrcode.getCameras().then(function (cameras) {
-                if (!cameras || !cameras.length) throw new Error('Keine Kamera gefunden.');
+                if (!cameras || !cameras.length) throw new Error(gettext('Keine Kamera gefunden.'));
                 // Prefer the rear camera (usually the last entry).
                 const camId = cameras[cameras.length - 1].id;
                 return scanner.start(camId, { fps: 10, qrbox: { width: 260, height: 160 } }, onDecode, function () {});
             }).catch(function (err) {
-                errorBox.textContent = 'Kamera nicht verfügbar: ' + (err && err.message ? err.message : err) +
-                    ' – du kannst den Code auch manuell eingeben.';
+                errorBox.textContent = gettext('Kamera nicht verfügbar:') + ' ' +
+                    (err && err.message ? err.message : err) + ' – ' +
+                    gettext('du kannst den Code auch manuell eingeben.');
                 errorBox.classList.remove('d-none');
             });
         }

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load i18n %}
+{% load static i18n %}
 {% block title %}{% trans "Mein Profil" %} · CMS{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
@@ -15,6 +15,48 @@
                         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-2"><i class="bi bi-fingerprint"></i> {% trans "Passkeys" %}</h2>
+                <p class="text-body-secondary small">
+                    {% blocktrans %}Melde dich ohne Passwort an – mit Fingerabdruck, Gesicht,
+                    Geräte-PIN oder einem Sicherheitsschlüssel. Der geheime Schlüssel bleibt
+                    dabei immer auf deinem Gerät.{% endblocktrans %}
+                </p>
+                {% if user_passkeys %}
+                <ul class="list-group mb-3">
+                    {% for passkey in user_passkeys %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                            {{ passkey.label }}
+                            <small class="text-body-secondary d-block">
+                                {% trans "Erstellt" %}: {{ passkey.created_at|date:"SHORT_DATE_FORMAT" }}
+                                · {% trans "Zuletzt verwendet" %}:
+                                {{ passkey.last_used_at|date:"SHORT_DATETIME_FORMAT"|default:"—" }}
+                            </small>
+                        </span>
+                        <form method="post" action="{% url 'passkey_delete' passkey.pk %}"
+                              data-confirm="{% trans 'Passkey wirklich entfernen?' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Entfernen" %}</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <input type="text" id="passkeyLabel" class="form-control form-control-sm"
+                           placeholder="{% trans 'Bezeichnung, z. B. Handy oder YubiKey' %}" maxlength="100">
+                    <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" id="passkeyAdd"
+                            data-begin-url="{% url 'passkey_register_begin' %}"
+                            data-complete-url="{% url 'passkey_register_complete' %}">
+                        <i class="bi bi-plus-lg"></i> {% trans "Passkey hinzufügen" %}
+                    </button>
+                </div>
+                <div id="passkeyStatus" class="form-text mt-2 d-none"></div>
             </div>
         </div>
 
@@ -45,7 +87,7 @@
                             </small>
                         </span>
                         <form method="post" action="{% url 'token_delete' token.pk %}"
-                              onsubmit="return confirm('{% trans "Token wirklich widerrufen?" %}');">
+                              data-confirm="{% trans 'Token wirklich widerrufen?' %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-danger">{% trans "Widerrufen" %}</button>
                         </form>
@@ -65,4 +107,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/passkeys.js' %}"></script>
 {% endblock %}

@@ -1,5 +1,9 @@
 // Small site-wide helpers.
 document.addEventListener('DOMContentLoaded', function () {
+    // Translations from Django's JavaScriptCatalog (loaded in base.html);
+    // identity fallback keeps everything working without the catalogue.
+    const gettext = window.gettext || function (s) { return s; };
+
     // Light/dark theme toggle. The initial theme is applied inline in <head>
     // (see base.html) to avoid a flash; here we wire the toggle button and keep
     // the choice in localStorage.
@@ -25,13 +29,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     })();
 
+    // CSP-safe confirmation dialogs: <form data-confirm="Frage?"> (inline
+    // onsubmit handlers are blocked by the Content-Security-Policy).
+    document.querySelectorAll('form[data-confirm]').forEach(function (f) {
+        f.addEventListener('submit', function (e) {
+            if (!window.confirm(f.getAttribute('data-confirm'))) e.preventDefault();
+        });
+    });
+
     // Copy-to-clipboard buttons: <button data-copy="https://…">
     document.querySelectorAll('[data-copy]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const text = btn.getAttribute('data-copy');
             navigator.clipboard.writeText(text).then(function () {
                 const original = btn.innerHTML;
-                btn.innerHTML = '<i class="bi bi-check-lg"></i> Kopiert!';
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> ' + gettext('Kopiert!');
                 setTimeout(function () { btn.innerHTML = original; }, 1500);
             });
         });
@@ -48,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function startTour() {
         if (!window.introJs) return;
         window.introJs().setOptions({
-            nextLabel: 'Weiter', prevLabel: 'Zurück', doneLabel: 'Fertig',
+            nextLabel: gettext('Weiter'), prevLabel: gettext('Zurück'), doneLabel: gettext('Fertig'),
             skipLabel: '✕', tooltipClass: 'cms-tour',
         }).start();
     }

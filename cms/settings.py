@@ -51,6 +51,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Content-Security-Policy (Django 6 native, config: SECURE_CSP below).
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
+    # X-Robots-Tag (keep crawlers out) + Permissions-Policy (camera only).
+    'Collection_Management_System.middleware.SecurityHeadersMiddleware',
     # WhiteNoise serves static files efficiently in production (right after security).
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -78,6 +82,8 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                # {{ csp_nonce }} for the few inline <script> blocks.
+                'django.template.context_processors.csp',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 # Runtime settings as {{ site_config.<key> }} (lazy per lookup).
@@ -154,6 +160,33 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# Argon2 (memory-hard, OWASP-recommended) as the primary password hasher.
+# Existing PBKDF2 hashes keep working and are transparently upgraded to
+# Argon2 on the next successful login.
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+]
+
+# Security-event log (failed-login lockouts, throttle hits, passkey failures).
+# Goes to stderr by default; point a handler at a file/syslog in production.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'security': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'security_console': {'class': 'logging.StreamHandler', 'formatter': 'security'},
+    },
+    'loggers': {
+        'cms.security': {'handlers': ['security_console'], 'level': 'INFO', 'propagate': False},
+    },
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -207,8 +240,9 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Security hardening — all env-gated and OFF by default, so local dev and tests
-# are unaffected. Enable these in production (see .env.production.example).
+# Security hardening — TLS-dependent options are env-gated and OFF by default,
+# so local dev and tests are unaffected. Enable these in production (see
+# .env.production.example). Everything else is on unconditionally.
 SECURE_SSL_REDIRECT = conf.get_bool('SECURE_SSL_REDIRECT', False)
 SESSION_COOKIE_SECURE = conf.get_bool('SESSION_COOKIE_SECURE', False)
 CSRF_COOKIE_SECURE = conf.get_bool('CSRF_COOKIE_SECURE', False)
@@ -217,6 +251,39 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = conf.get_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS',
 SECURE_HSTS_PRELOAD = conf.get_bool('SECURE_HSTS_PRELOAD', False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# Cookies: session/CSRF cookies are never readable from JS and never sent on
+# cross-site requests. Sessions expire after 14 days by default (configurable).
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = conf.get_int('SESSION_COOKIE_AGE', 14 * 24 * 3600)
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# Content-Security-Policy (enforced; Django 6 native). All assets are served
+# from this origin (static/vendor/, see base.html), inline scripts carry a
+# per-request nonce. Only lookup cover previews load images from the
+# whitelisted book-database hosts (same set as lookup_providers.COVER_HOSTS).
+from django.utils.csp import CSP
+
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'script-src': [CSP.SELF, CSP.NONCE],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE],  # style="" attrs + Bootstrap JS
+    'img-src': [
+        CSP.SELF, 'data:',
+        'https://covers.openlibrary.org', 'https://books.google.com',
+        'https://books.googleusercontent.com', 'https://portal.dnb.de',
+    ],
+    'font-src': [CSP.SELF],
+    'connect-src': [CSP.SELF],
+    'worker-src': [CSP.SELF, 'blob:'],  # html5-qrcode + service worker
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'form-action': [CSP.SELF],
+    'frame-ancestors': [CSP.NONE],
+}
+SECURE_CSP_REPORT_ONLY = {}
 
 # Trust the proxy's X-Forwarded-Proto header (set when terminating TLS upstream).
 if conf.get_bool('USE_PROXY_SSL_HEADER', False):

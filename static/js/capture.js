@@ -3,6 +3,9 @@
 // and the captured photo is placed into the file input as if it were selected.
 // Normal file selection keeps working; without camera support no button is added.
 (function () {
+    // Translations from Django's JavaScriptCatalog (loaded in base.html).
+    const gettext = window.gettext || function (s) { return s; };
+
     document.addEventListener('DOMContentLoaded', function () {
         const inputs = document.querySelectorAll('input[type="file"][data-capture]');
         const modalEl = document.getElementById('captureModal');
@@ -26,7 +29,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn btn-outline-secondary';
-            btn.title = 'Mit Kamera aufnehmen';
+            btn.title = gettext('Mit Kamera aufnehmen');
             btn.innerHTML = '<i class="bi bi-camera"></i>';
             btn.addEventListener('click', function () {
                 targetInput = input;
@@ -45,8 +48,9 @@
                     shotBtn.disabled = false;
                 })
                 .catch(function (err) {
-                    errorBox.textContent = 'Kamera nicht verfügbar: ' + (err && err.message ? err.message : err) +
-                        ' – du kannst stattdessen eine Datei auswählen.';
+                    errorBox.textContent = gettext('Kamera nicht verfügbar:') + ' ' +
+                        (err && err.message ? err.message : err) + ' – ' +
+                        gettext('du kannst stattdessen eine Datei auswählen.');
                     errorBox.classList.remove('d-none');
                 });
         }

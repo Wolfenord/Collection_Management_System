@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy as _l
 
-from .models import ApiToken, User
+from .models import ApiToken, User, WebAuthnCredential
 
 
 @admin.register(ApiToken)
@@ -13,7 +13,20 @@ class ApiTokenAdmin(admin.ModelAdmin):
 
     list_display = ('name', 'user', 'created_at', 'last_used_at')
     readonly_fields = ('user', 'name', 'created_at', 'last_used_at')
-    exclude = ('key',)
+    exclude = ('key_hash',)
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(WebAuthnCredential)
+class WebAuthnCredentialAdmin(admin.ModelAdmin):
+    """Passkeys are registered on the profile page (needs the authenticator);
+    the admin only lists and revokes them."""
+
+    list_display = ('label', 'user', 'created_at', 'last_used_at')
+    readonly_fields = ('user', 'label', 'credential_id', 'public_key',
+                       'sign_count', 'created_at', 'last_used_at')
 
     def has_add_permission(self, request):
         return False

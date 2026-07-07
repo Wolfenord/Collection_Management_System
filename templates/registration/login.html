@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load i18n %}
+{% load static i18n %}
 {% block title %}{% trans "Anmelden" %} · CMS{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
@@ -28,6 +28,15 @@
                     </div>
                     <button type="submit" class="btn btn-primary w-100">{% trans "Anmelden" %}</button>
                 </form>
+                {# Password-less sign-in with a passkey (WebAuthn); the button hides itself without browser support/HTTPS. #}
+                <div class="text-center my-3 text-body-secondary small">{% trans "oder" %}</div>
+                <button type="button" class="btn btn-outline-primary w-100" id="passkeyLogin"
+                        data-begin-url="{% url 'passkey_login_begin' %}"
+                        data-complete-url="{% url 'passkey_login_complete' %}"
+                        data-next="{{ request.GET.next|default:'' }}">
+                    <i class="bi bi-fingerprint"></i> {% trans "Mit Passkey anmelden" %}
+                </button>
+                <div id="passkeyLoginStatus" class="form-text mt-2 d-none"></div>
                 <p class="text-center mt-3 mb-0 small">
                     {% if site_config.registration_enabled %}
                     {% trans "Noch kein Konto?" %} <a href="{% url 'register' %}">{% trans "Jetzt registrieren" %}</a>
@@ -39,4 +48,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/passkeys.js' %}"></script>
 {% endblock %}

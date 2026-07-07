@@ -9,6 +9,7 @@ from django.contrib.auth.forms import (
 )
 from django.utils.translation import gettext_lazy as _
 
+from . import throttling
 from .models import User
 
 
@@ -144,9 +145,23 @@ class ApprovalAuthenticationForm(AuthenticationForm):
         password = self.cleaned_data.get('password')
 
         if username and password:
+            # Brute-force lockout BEFORE checking credentials: a locked
+            # attacker learns nothing about the password's correctness.
+            if self.request is not None and throttling.login_blocked(self.request, username):
+                raise forms.ValidationError(
+                    _('Zu viele fehlgeschlagene Anmeldeversuche. Die Anmeldung '
+                      'ist vorübergehend gesperrt — bitte versuche es in etwa '
+                      '15 Minuten erneut.'),
+                    code='throttled',
+                )
             self.user_cache = authenticate(
                 self.request, username=username, password=password,
             )
+            if self.request is not None:
+                if self.user_cache is None:
+                    throttling.login_failed(self.request, username)
+                else:
+                    throttling.login_succeeded(self.request, username)
             if self.user_cache is None:
                 # authenticate() returns None for both wrong credentials and
                 # inactive (unapproved) accounts. Look the account up and verify

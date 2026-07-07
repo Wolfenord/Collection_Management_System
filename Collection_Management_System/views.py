@@ -190,7 +190,12 @@ def collection_detail(request, pk):
     items_qs, sort, descending = _apply_sort(request, items_qs, fields)
     paginator = Paginator(items_qs, get_setting_for(request.user, 'items_per_page'))
     page_obj = paginator.get_page(request.GET.get('page'))
-    rows = [{'item': item, 'cells': item_row(item, fields)} for item in page_obj]
+    # Pair each cell with its field so the template can render data-labels
+    # (needed for the stacked card layout of the items table on phones).
+    rows = [
+        {'item': item, 'cells': list(zip(fields, item_row(item, fields)))}
+        for item in page_obj
+    ]
 
     context = {
         'collection': collection,
@@ -467,6 +472,20 @@ def _lookup_context(collection, form=None) -> dict:
 
 
 @login_required
+def _lookup_allowed(request) -> bool:
+    """Cap external-database lookups at 30/minute per user: the server makes
+    outbound requests to DNB/Google/Open Library on behalf of the user, so an
+    abusive client must not be able to turn it into a request cannon."""
+    from accounts.throttling import allow
+    return allow('lookup', str(request.user.pk), max_requests=30, window_seconds=60)
+
+
+def _lookup_throttled() -> JsonResponse:
+    return JsonResponse({'ok': False, 'error': _('Zu viele Anfragen. Bitte warte '
+                                                 'einige Minuten und versuche es dann '
+                                                 'erneut.')}, status=429)
+
+
 def item_lookup(request, pk):
     """AJAX: look up ``?q=`` in the collection's external database and return the
     values for every field that is mapped to a provider attribute.
@@ -475,6 +494,8 @@ def item_lookup(request, pk):
     from each field's ``config['lookup_attribute']`` mapping.
     """
     collection = _get_collection_for(request.user, pk, need_edit=True)
+    if not _lookup_allowed(request):
+        return _lookup_throttled()
     provider = lookup_providers.auto_provider()
     if not _has_lookup_mapping(collection):
         return JsonResponse({'ok': False, 'error': _('Kein Feld für die automatische '
@@ -528,6 +549,8 @@ def item_search(request, pk):
     to the item by filling the mapped fields (incl. ISBN and cover).
     """
     collection = _get_collection_for(request.user, pk, need_edit=True)
+    if not _lookup_allowed(request):
+        return _lookup_throttled()
     provider = lookup_providers.auto_provider()
     if not _has_lookup_mapping(collection):
         return JsonResponse({'ok': False, 'error': _('Kein Feld für die automatische '

@@ -4,6 +4,32 @@ from django.conf import settings
 from django.shortcuts import render
 
 
+class SecurityHeadersMiddleware:
+    """Add security headers that Django's SecurityMiddleware does not cover.
+
+    - ``X-Robots-Tag``: the CMS holds private collection data; no page is
+      meant for search engines or AI crawlers. Combined with robots.txt and
+      the ``<meta name="robots">`` tag this keeps well-behaved crawlers out
+      on all three layers (header wins even for non-HTML responses such as
+      exports, QR codes and media).
+    - ``Permissions-Policy``: browser features are opt-in per feature. Only
+      the camera (barcode/ISBN scanning, photo capture) is allowed, and only
+      for this origin; microphone, geolocation & friends stay off.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.headers.setdefault('X-Robots-Tag', 'noindex, nofollow, noarchive')
+        response.headers.setdefault(
+            'Permissions-Policy',
+            'camera=(self), microphone=(), geolocation=(), payment=(), usb=()',
+        )
+        return response
+
+
 class DefaultLanguageMiddleware:
     """Make ``LANGUAGE_CODE`` (German) the default UI language.
 

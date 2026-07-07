@@ -1,8 +1,20 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.cache import cache
+from django.test import TestCase as DjangoTestCase
 from django.urls import reverse
 
 User = get_user_model()
+
+
+class TestCase(DjangoTestCase):
+    """Project TestCase: start every test with an empty cache so the
+    brute-force throttle counters (accounts.throttling) never leak between
+    tests. ``_pre_setup`` runs before each test even when subclasses define
+    their own ``setUp`` without calling ``super()``."""
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
 
 
 class RegistrationApprovalTests(TestCase):
@@ -292,25 +304,218 @@ class ApiTokenUiTests(TestCase):
         self.user = User.objects.create_user('u', 'u@e.de', 'pw')
         self.client.force_login(self.user)
 
-    def test_create_token_shows_key_once(self):
+    def test_create_token_shows_key_once_and_stores_only_hash(self):
+        import re
         from .models import ApiToken
         resp = self.client.post(reverse('token_create'), {'name': 'NAS-Skript'},
                                 follow=True)
         token = ApiToken.objects.get(user=self.user)
         self.assertEqual(token.name, 'NAS-Skript')
-        self.assertContains(resp, token.key)      # shown once after creation
+        # The plain key appears exactly once, in the success message …
+        match = re.search(r'erstellt: ([\w-]+)', resp.content.decode())
+        self.assertIsNotNone(match)
+        key = match.group(1)
+        # … and the database holds only its hash.
+        self.assertEqual(token.key_hash, ApiToken.hash_key(key))
+        self.assertNotEqual(token.key_hash, key)
         resp = self.client.get(reverse('profile'))
-        self.assertNotContains(resp, token.key)   # never again afterwards
+        self.assertNotContains(resp, key)   # never shown again afterwards
 
     def test_revoke_own_token(self):
         from .models import ApiToken
-        token = ApiToken.objects.create(user=self.user, name='Alt')
+        token, _key = ApiToken.create_for_user(self.user, 'Alt')
         self.client.post(reverse('token_delete', args=[token.pk]))
         self.assertFalse(ApiToken.objects.filter(pk=token.pk).exists())
 
     def test_cannot_revoke_foreign_token(self):
         from .models import ApiToken
         other = User.objects.create_user('other', 'x@e.de', 'pw')
-        token = ApiToken.objects.create(user=other, name='Fremd')
+        token, _key = ApiToken.create_for_user(other, 'Fremd')
         self.client.post(reverse('token_delete', args=[token.pk]))
         self.assertTrue(ApiToken.objects.filter(pk=token.pk).exists())
+
+
+class BruteForceThrottleTests(TestCase):
+    """Cache-based lockouts on login, registration and password reset."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'anna', 'anna@e.de', 'richtig-123',
+            approval_status=User.APPROVAL_APPROVED,
+        )
+
+    def _fail_login(self):
+        return self.client.post(reverse('login'),
+                                {'username': 'anna', 'password': 'falsch'})
+
+    def test_login_locks_after_five_failures(self):
+        from .throttling import LOGIN_MAX_PER_USER
+        for _ in range(LOGIN_MAX_PER_USER):
+            self._fail_login()
+        resp = self.client.post(reverse('login'),
+                                {'username': 'anna', 'password': 'richtig-123'})
+        # Even the CORRECT password is refused while locked.
+        self.assertContains(resp, 'vorübergehend gesperrt')
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_successful_login_resets_counter(self):
+        for _ in range(3):
+            self._fail_login()
+        self.client.post(reverse('login'),
+                         {'username': 'anna', 'password': 'richtig-123'})
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_register_rate_limited_per_ip(self):
+        url = reverse('register')
+        for i in range(10):
+            self.client.post(url, {'username': f'benutzer{i}'})  # invalid is fine
+        resp = self.client.post(url, {'username': 'benutzer11'})
+        self.assertEqual(resp.status_code, 429)
+
+    def test_password_reset_rate_limited_per_ip(self):
+        url = reverse('password_reset')
+        for _ in range(5):
+            self.client.post(url, {'email': 'anna@e.de'})
+        resp = self.client.post(url, {'email': 'anna@e.de'})
+        self.assertEqual(resp.status_code, 429)
+
+    def test_get_requests_never_throttled(self):
+        for _ in range(30):
+            resp = self.client.get(reverse('register'))
+        self.assertEqual(resp.status_code, 200)
+
+
+class PasskeyTests(TestCase):
+    """Passkey (WebAuthn) registration and password-less login."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'anna', 'anna@e.de', 'pw-123',
+            approval_status=User.APPROVAL_APPROVED,
+        )
+
+    def _credential(self, user=None, cid='dGVzdC1pZA'):
+        from .models import WebAuthnCredential
+        return WebAuthnCredential.objects.create(
+            user=user or self.user, label='Handy',
+            credential_id=cid, public_key='cHVibGljLWtleQ', sign_count=1,
+        )
+
+    def test_register_begin_requires_login_and_returns_options(self):
+        url = reverse('passkey_register_begin')
+        self.assertEqual(self.client.post(url).status_code, 302)  # → login
+
+        self.client.force_login(self.user)
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 200)
+        options = resp.json()
+        self.assertIn('challenge', options)
+        self.assertEqual(options['rp']['id'], 'testserver')
+        self.assertEqual(options['user']['name'], 'anna')
+        # Challenge parked in the session for the complete step.
+        self.assertIn('webauthn_register_challenge', self.client.session)
+
+    def test_register_complete_rejects_garbage_and_missing_challenge(self):
+        self.client.force_login(self.user)
+        url = reverse('passkey_register_complete')
+        # No begin call → no challenge in the session.
+        resp = self.client.post(url, '{}', content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        # With a challenge but an invalid credential payload.
+        self.client.post(reverse('passkey_register_begin'))
+        resp = self.client.post(url, '{"credential": {"bad": true}}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(self.user.passkeys.count(), 0)
+
+    def test_login_begin_anonymous_returns_options(self):
+        resp = self.client.post(reverse('passkey_login_begin'))
+        self.assertEqual(resp.status_code, 200)
+        options = resp.json()
+        self.assertIn('challenge', options)
+        self.assertEqual(options['userVerification'], 'required')
+        self.assertIn('webauthn_login_challenge', self.client.session)
+
+    def test_login_complete_unknown_credential_generic_error(self):
+        self.client.post(reverse('passkey_login_begin'))
+        resp = self.client.post(
+            reverse('passkey_login_complete'),
+            '{"credential": {"id": "gibtsnicht"}}',
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_login_complete_signs_in_active_user(self):
+        from unittest import mock
+        from accounts import passkeys as pk
+        cred = self._credential()
+        self.client.post(reverse('passkey_login_begin'))
+        verified = mock.Mock(new_sign_count=2)
+        with mock.patch.object(pk, 'verify_authentication_response', return_value=verified):
+            resp = self.client.post(
+                reverse('passkey_login_complete'),
+                '{"credential": {"id": "%s"}}' % cred.credential_id,
+                content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
+        self.assertIn('_auth_user_id', self.client.session)
+        cred.refresh_from_db()
+        self.assertEqual(cred.sign_count, 2)   # clone detection counter moved on
+        self.assertIsNotNone(cred.last_used_at)
+
+    def test_login_complete_blocks_unapproved_account(self):
+        from unittest import mock
+        from accounts import passkeys as pk
+        pending = User.objects.create_user('neu', 'n@e.de', 'pw', is_active=False)
+        cred = self._credential(user=pending)
+        self.client.post(reverse('passkey_login_begin'))
+        with mock.patch.object(pk, 'verify_authentication_response',
+                               return_value=mock.Mock(new_sign_count=2)):
+            resp = self.client.post(
+                reverse('passkey_login_complete'),
+                '{"credential": {"id": "%s"}}' % cred.credential_id,
+                content_type='application/json')
+        self.assertEqual(resp.status_code, 403)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_login_complete_rejects_invalid_signature(self):
+        cred = self._credential()
+        self.client.post(reverse('passkey_login_begin'))
+        # Real verification with a fake credential must fail cleanly.
+        resp = self.client.post(
+            reverse('passkey_login_complete'),
+            '{"credential": {"id": "%s"}}' % cred.credential_id,
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_delete_only_own_passkey(self):
+        other = User.objects.create_user('other', 'o@e.de', 'pw')
+        foreign = self._credential(user=other, cid='ZnJlbWQ')
+        mine = self._credential(cid='bWVpbnM')
+        self.client.force_login(self.user)
+        from .models import WebAuthnCredential
+        self.client.post(reverse('passkey_delete', args=[foreign.pk]))
+        self.assertTrue(WebAuthnCredential.objects.filter(pk=foreign.pk).exists())
+        self.client.post(reverse('passkey_delete', args=[mine.pk]))
+        self.assertFalse(WebAuthnCredential.objects.filter(pk=mine.pk).exists())
+
+    def test_login_page_offers_passkey_button(self):
+        resp = self.client.get(reverse('login'))
+        self.assertContains(resp, 'id="passkeyLogin"')
+        self.assertContains(resp, reverse('passkey_login_begin'))
+        self.assertContains(resp, 'js/passkeys.js')
+
+    def test_profile_page_offers_passkey_management(self):
+        self.client.force_login(self.user)
+        self._credential()
+        resp = self.client.get(reverse('profile'))
+        self.assertContains(resp, 'id="passkeyAdd"')
+        self.assertContains(resp, 'Handy')
+        self.assertContains(resp, reverse('passkey_register_begin'))
+
+
+class PasswordHashingTests(TestCase):
+    def test_new_passwords_use_argon2(self):
+        user = User.objects.create_user('hash-test', 'h@e.de', 'ein-passwort-123')
+        self.assertTrue(user.password.startswith('argon2'), user.password[:20])

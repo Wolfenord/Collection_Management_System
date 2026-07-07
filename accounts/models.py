@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 
 from django.conf import settings
@@ -88,6 +89,34 @@ class User(AbstractUser):
         ])
 
 
+class WebAuthnCredential(models.Model):
+    """A passkey (WebAuthn/FIDO2 credential) registered to a user account.
+
+    Only the *public* key is stored — the private key never leaves the user's
+    authenticator (phone, security key, password manager). ``credential_id``
+    and ``public_key`` are kept base64url-encoded, ``sign_count`` guards
+    against cloned authenticators (checked by py_webauthn on every login).
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='passkeys',
+    )
+    label = models.CharField(_('Bezeichnung'), max_length=100)
+    credential_id = models.TextField(unique=True)
+    public_key = models.TextField()
+    sign_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(_('Zuletzt verwendet'), null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _('Passkey')
+        verbose_name_plural = _('Passkeys')
+
+    def __str__(self) -> str:
+        return f'{self.label} ({self.user})'
+
+
 def generate_token_key() -> str:
     return secrets.token_urlsafe(32)
 
@@ -95,17 +124,17 @@ def generate_token_key() -> str:
 class ApiToken(models.Model):
     """A personal access token for the JSON API (``Authorization: Bearer <key>``).
 
-    The key is stored as-is (like DRF's authtoken) and shown to the user only
-    once, right after creation. Users manage their tokens on the profile page;
-    the API itself is gated by the runtime setting ``api_enabled``.
+    Only the SHA-256 hash of the key is stored — like a password, the plain
+    key is shown to the user exactly once, right after creation, and a stolen
+    database does not yield usable tokens. Users manage their tokens on the
+    profile page; the API itself is gated by the runtime setting ``api_enabled``.
     """
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='api_tokens',
     )
     name = models.CharField(_('Bezeichnung'), max_length=100)
-    key = models.CharField(max_length=64, unique=True, default=generate_token_key,
-                           editable=False)
+    key_hash = models.CharField(max_length=64, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(_('Zuletzt verwendet'), null=True, blank=True)
 
@@ -116,6 +145,18 @@ class ApiToken(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} ({self.user})'
+
+    @staticmethod
+    def hash_key(key: str) -> str:
+        return hashlib.sha256(key.encode()).hexdigest()
+
+    @classmethod
+    def create_for_user(cls, user, name: str) -> tuple['ApiToken', str]:
+        """Create a token and return it together with the plain key —
+        the only moment the key exists outside the client's hands."""
+        key = generate_token_key()
+        token = cls.objects.create(user=user, name=name, key_hash=cls.hash_key(key))
+        return token, key
 
     def touch(self) -> None:
         """Stamp last use without racing concurrent requests."""

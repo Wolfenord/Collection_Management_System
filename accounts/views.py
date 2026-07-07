@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from .forms import ProfileForm, RegistrationForm, StyledPasswordChangeForm
+from .throttling import ratelimit_post
 
 
 def _notify_admins_of_registration(request, user) -> None:
@@ -33,6 +34,7 @@ def _notify_admins_of_registration(request, user) -> None:
     )
 
 
+@ratelimit_post('register', max_requests=10, window_seconds=3600)
 def register(request):
     """Self-service account creation.
 
@@ -87,6 +89,7 @@ def profile(request):
     return render(request, 'accounts/profile.html', {
         'form': form,
         'api_tokens': request.user.api_tokens.all(),
+        'user_passkeys': request.user.passkeys.all(),
     })
 
 
@@ -96,12 +99,12 @@ def token_create(request):
     from .models import ApiToken
     if request.method == 'POST':
         name = (request.POST.get('name') or '').strip()[:100] or _('API-Token')
-        token = ApiToken.objects.create(user=request.user, name=name)
+        token, key = ApiToken.create_for_user(request.user, name)
         messages.success(
             request,
             _('Token „%(name)s“ erstellt: %(key)s — jetzt kopieren, '
               'er wird nur dieses eine Mal angezeigt.')
-            % {'name': token.name, 'key': token.key},
+            % {'name': token.name, 'key': key},
         )
     return redirect('profile')
 

@@ -11,7 +11,7 @@
     <h1 class="h4 mb-0"><i class="bi bi-trash"></i> {% trans "Papierkorb" %}</h1>
     {% if items %}
     <form method="post" action="{% url 'trash_empty' collection.pk %}"
-          onsubmit="return confirm('{% trans "Papierkorb wirklich leeren? Das kann nicht rückgängig gemacht werden." %}');">
+          data-confirm="{% trans 'Papierkorb wirklich leeren? Das kann nicht rückgängig gemacht werden.' %}">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-outline-danger">
             <i class="bi bi-x-circle"></i> {% trans "Papierkorb leeren" %}
@@ -48,7 +48,7 @@
                     </button>
                 </form>
                 <form method="post" action="{% url 'item_purge' collection.pk item.pk %}" class="d-inline"
-                      onsubmit="return confirm('{% trans "Endgültig löschen? Das kann nicht rückgängig gemacht werden." %}');">
+                      data-confirm="{% trans 'Endgültig löschen? Das kann nicht rückgängig gemacht werden.' %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-outline-danger">
                         <i class="bi bi-x-lg"></i> {% trans "Endgültig löschen" %}

@@ -14,7 +14,7 @@
         <h1 class="h3 mb-1">{{ collection.name }}</h1>
         <p class="text-muted mb-0">{{ collection.description|default:_("Keine Beschreibung.") }}</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <span class="badge text-bg-secondary text-uppercase align-self-center">{{ permission }}</span>
         {% if can_edit %}
         <a href="{% url 'collection_edit' collection.pk %}" class="btn btn-outline-secondary"
@@ -66,7 +66,7 @@
                     {% blocktrans count counter=item_count %}{{ counter }} Gegenstand{% plural %}{{ counter }} Gegenstände{% endblocktrans %}
                 {% endif %}
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel"
                         data-intro="{% trans 'Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und als QR-Code nutzen.' %}" data-step="3">
                     <i class="bi bi-funnel"></i> {% trans "Filter" %}
@@ -144,7 +144,7 @@
         </div>
         {% endif %}
         <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 table-stack">
                 <thead class="table-light">
                     <tr>
                         {% if can_edit %}
@@ -169,15 +169,15 @@
                     {% for row in rows %}
                     <tr>
                         {% if can_edit %}
-                        <td>
+                        <td class="table-stack-check">
                             <input type="checkbox" class="form-check-input" name="items"
                                    value="{{ row.item.pk }}" data-bulk-item
                                    aria-label="{% trans 'Gegenstand auswählen' %}">
                         </td>
                         {% endif %}
-                        <td><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
-                        {% for cell in row.cells %}
-                        <td>
+                        <td data-label="{% trans 'Art' %}"><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
+                        {% for field, cell in row.cells %}
+                        <td data-label="{{ field.label }}">
                             {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" style="height:36px" class="rounded">
                             {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
                             {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank">{{ cell.value|truncatechars:30 }}</a>
@@ -185,7 +185,7 @@
                             {% else %}{{ cell.value|truncatechars:60 }}{% endif %}
                         </td>
                         {% endfor %}
-                        <td class="text-end">
+                        <td class="text-end table-stack-actions">
                             <a href="{% url 'item_detail' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                         </td>
                     </tr>
@@ -342,10 +342,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
 <script src="{% static 'js/scanner.js' %}"></script>
 {% if can_edit %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // Bulk selection: toggle the action bar, keep the counter in sync, confirm deletes.
 (function () {
     const form = document.getElementById('bulkForm');
@@ -380,8 +380,8 @@
     });
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script>
+<script src="{% static 'vendor/sortablejs/Sortable.min.js' %}"></script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     const tbody = document.getElementById('fieldsSortable');
     if (!tbody || !window.Sortable) return;

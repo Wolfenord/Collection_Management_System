@@ -16,7 +16,7 @@
         <div class="text-muted small mt-1">{% trans "ID" %}: <code>{{ item.id }}</code></div>
     </div>
     {% if can_edit %}
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a href="{% url 'item_edit' collection.pk item.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {% trans "Bearbeiten" %}</a>
         <form method="post" action="{% url 'item_duplicate' collection.pk item.pk %}" class="d-inline">
             {% csrf_token %}

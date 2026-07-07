@@ -13,6 +13,13 @@
 //   3. Generic search box (title, name, keywords) -> same candidate list.
 // Everything is keyed by the collection's own field keys, so it stays dynamic.
 (function () {
+    // Translations come from Django's JavaScriptCatalog (loaded in base.html);
+    // identity fallbacks keep the page working if the catalogue is missing.
+    const gettext = window.gettext || function (s) { return s; };
+    const interpolate = window.interpolate || function (fmt, obj) {
+        return fmt.replace(/%\((\w+)\)s/g, function (m, k) { return String(obj[k]); });
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         const cfg = document.getElementById('autofill');
         if (!cfg) return;
@@ -20,7 +27,7 @@
         const url = cfg.getAttribute('data-lookup-url');
         const searchUrl = cfg.getAttribute('data-search-url');
         const queryKey = cfg.getAttribute('data-query-key');
-        const provider = cfg.getAttribute('data-provider') || 'den externen Datenbanken';
+        const provider = cfg.getAttribute('data-provider') || gettext('den externen Datenbanken');
         const exclude = cfg.getAttribute('data-exclude') || '';
         let suggestFields = {};
         try { suggestFields = JSON.parse(cfg.getAttribute('data-suggest-fields') || '{}'); } catch (e) { /* ignore */ }
@@ -80,21 +87,21 @@
             hidden.value = coverUrl;
             prev.innerHTML =
                 '<img src="' + coverUrl + '" alt="Cover" style="height:80px" class="rounded border me-2">' +
-                '<span class="text-success"><i class="bi bi-check-circle"></i> Bild wird beim Speichern übernommen.</span> ' +
-                '<a href="#" class="autofill-cover-skip">Nicht übernehmen</a>';
+                '<span class="text-success"><i class="bi bi-check-circle"></i> ' + gettext('Bild wird beim Speichern übernommen.') + '</span> ' +
+                '<a href="#" class="autofill-cover-skip">' + gettext('Nicht übernehmen') + '</a>';
             prev.querySelector('.autofill-cover-skip').addEventListener('click', function (e) {
                 e.preventDefault();
                 hidden.value = '';
-                prev.innerHTML = '<span class="text-muted">Bild wird nicht übernommen.</span> ' +
-                    '<a href="' + coverUrl + '" target="_blank" rel="noopener">Bild öffnen</a>';
+                prev.innerHTML = '<span class="text-muted">' + gettext('Bild wird nicht übernommen.') + '</span> ' +
+                    '<a href="' + coverUrl + '" target="_blank" rel="noopener">' + gettext('Bild öffnen') + '</a>';
             });
         }
 
         function showDuplicate(duplicate) {
             if (!duplicate) return;
             status.innerHTML += ' <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> ' +
-                'Achtung: „' + duplicate.name + '“ mit diesem Code existiert bereits – ' +
-                '<a href="' + duplicate.url + '">öffnen</a>.</span>';
+                interpolate(gettext('Achtung: „%(name)s“ mit diesem Code existiert bereits – <a href="%(url)s">öffnen</a>.'),
+                    { name: duplicate.name, url: duplicate.url }, true) + '</span>';
         }
 
         function applyResult(result, list) {
@@ -109,8 +116,9 @@
             });
             Object.keys(result.covers || {}).forEach(function (key) { showCover(key, result.covers[key]); });
             if (list) list.innerHTML = '';
-            setStatus('<i class="bi bi-check-circle text-success"></i> Vorschlag übernommen – ' + count +
-                ' Feld(er) befüllt. Bitte prüfen und speichern.', 'text-success');
+            setStatus('<i class="bi bi-check-circle text-success"></i> ' +
+                interpolate(gettext('Vorschlag übernommen – %(count)s Feld(er) befüllt. Bitte prüfen und speichern.'),
+                    { count: count }, true), 'text-success');
         }
 
         function renderResults(list, results) {
@@ -118,7 +126,7 @@
             if (!results.length) {
                 const empty = document.createElement('div');
                 empty.className = 'list-group-item small text-muted';
-                empty.textContent = 'Keine Treffer in ' + provider + '.';
+                empty.textContent = interpolate(gettext('Keine Treffer in %(provider)s.'), { provider: provider }, true);
                 list.appendChild(empty);
                 return;
             }
@@ -141,7 +149,7 @@
                 const applyBtn = document.createElement('button');
                 applyBtn.type = 'button';
                 applyBtn.className = 'btn btn-sm btn-primary';
-                applyBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Übernehmen';
+                applyBtn.innerHTML = '<i class="bi bi-link-45deg"></i> ' + gettext('Übernehmen');
                 applyBtn.addEventListener('click', function () { applyResult(result, list); });
                 row.appendChild(applyBtn);
                 list.appendChild(row);
@@ -152,7 +160,8 @@
             const q = (query || '').trim();
             if (!q || !searchUrl) return;
             list.innerHTML = '<div class="list-group-item small text-muted">' +
-                '<span class="spinner-border spinner-border-sm"></span> Suche in ' + provider + ' …</div>';
+                '<span class="spinner-border spinner-border-sm"></span> ' +
+                interpolate(gettext('Suche in %(provider)s …'), { provider: provider }, true) + '</div>';
             fetch(searchUrl + '?q=' + encodeURIComponent(q), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             })
@@ -160,13 +169,13 @@
                 .then(function (data) {
                     if (!data.ok) {
                         list.innerHTML = '';
-                        setStatus('<i class="bi bi-exclamation-circle"></i> ' + (data.error || 'Fehler bei der Suche.'), 'text-danger');
+                        setStatus('<i class="bi bi-exclamation-circle"></i> ' + (data.error || gettext('Fehler bei der Suche.')), 'text-danger');
                         return;
                     }
                     renderResults(list, data.results || []);
                 })
                 .catch(function () {
-                    list.innerHTML = '<div class="list-group-item small text-danger">Suche nicht möglich (Netzwerk?).</div>';
+                    list.innerHTML = '<div class="list-group-item small text-danger">' + gettext('Suche nicht möglich (Netzwerk?).') + '</div>';
                 });
         }
 
@@ -191,26 +200,30 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn btn-outline-primary';
-            btn.title = 'Code in allen Datenbanken (' + provider + ') suchen und Felder befüllen';
-            btn.innerHTML = '<i class="bi bi-search"></i> Suchen';
+            btn.title = interpolate(gettext('Code in allen Datenbanken (%(provider)s) suchen und Felder befüllen'),
+                { provider: provider }, true);
+            btn.innerHTML = '<i class="bi bi-search"></i> ' + gettext('Suchen');
             addGroupButton(queryInput, btn);
 
             function lookup() {
                 const q = (queryInput.value || '').trim();
                 if (!q || q === lastQuery) return;
                 lastQuery = q;
-                setStatus('<span class="spinner-border spinner-border-sm"></span> Suche in ' + provider + ' …', 'text-muted');
+                setStatus('<span class="spinner-border spinner-border-sm"></span> ' +
+                    interpolate(gettext('Suche in %(provider)s …'), { provider: provider }, true), 'text-muted');
                 fetch(url + '?q=' + encodeURIComponent(q) + (exclude ? '&exclude=' + encodeURIComponent(exclude) : ''), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (!data.ok) {
-                            setStatus('<i class="bi bi-exclamation-circle"></i> ' + (data.error || 'Fehler bei der Suche.'), 'text-danger');
+                            setStatus('<i class="bi bi-exclamation-circle"></i> ' + (data.error || gettext('Fehler bei der Suche.')), 'text-danger');
                             return;
                         }
                         if (!data.found) {
-                            setStatus('<i class="bi bi-info-circle"></i> Kein Treffer in ' + provider + ' für „' + q + '“.', 'text-warning');
+                            setStatus('<i class="bi bi-info-circle"></i> ' +
+                                interpolate(gettext('Kein Treffer in %(provider)s für „%(query)s“.'),
+                                    { provider: provider, query: q }, true), 'text-warning');
                             showDuplicate(data.duplicate);
                             return;
                         }
@@ -219,12 +232,13 @@
                             if (fillField(key, data.fields[key])) count++;
                         });
                         Object.keys(data.covers || {}).forEach(function (key) { showCover(key, data.covers[key]); });
-                        setStatus('<i class="bi bi-check-circle text-success"></i> ' + count +
-                            ' Feld(er) automatisch befüllt (Quellen: ' + data.provider + '). Bitte prüfen und speichern.', 'text-success');
+                        setStatus('<i class="bi bi-check-circle text-success"></i> ' +
+                            interpolate(gettext('%(count)s Feld(er) automatisch befüllt (Quellen: %(sources)s). Bitte prüfen und speichern.'),
+                                { count: count, sources: data.provider }, true), 'text-success');
                         showDuplicate(data.duplicate);
                     })
                     .catch(function () {
-                        setStatus('<i class="bi bi-exclamation-circle"></i> Suche nicht möglich (Netzwerk?).', 'text-danger');
+                        setStatus('<i class="bi bi-exclamation-circle"></i> ' + gettext('Suche nicht möglich (Netzwerk?).'), 'text-danger');
                         lastQuery = null;
                     });
             }
@@ -237,8 +251,9 @@
                 if (e.key === 'Enter') { e.preventDefault(); lastQuery = null; lookup(); }
             });
 
-            setStatus('<i class="bi bi-magic"></i> Tipp: Code scannen oder eingeben – die Felder werden automatisch aus ' +
-                provider + ' befüllt.', 'text-muted');
+            setStatus('<i class="bi bi-magic"></i> ' +
+                interpolate(gettext('Tipp: Code scannen oder eingeben – die Felder werden automatisch aus %(provider)s befüllt.'),
+                    { provider: provider }, true), 'text-muted');
         }
 
         // --- 2. Suggestions from any mapped text field -----------------------
@@ -257,7 +272,8 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'btn btn-outline-secondary';
-                btn.title = 'Mit diesem Wert in allen Datenbanken (' + provider + ') suchen und einen Vorschlag übernehmen';
+                btn.title = interpolate(gettext('Mit diesem Wert in allen Datenbanken (%(provider)s) suchen und einen Vorschlag übernehmen'),
+                    { provider: provider }, true);
                 btn.innerHTML = '<i class="bi bi-binoculars"></i>';
                 btn.addEventListener('click', function () { runSearch(input.value, list); });
 
@@ -266,7 +282,7 @@
                     const holder = document.createElement('div');
                     holder.className = 'mt-1';
                     btn.classList.add('btn-sm');
-                    btn.innerHTML = '<i class="bi bi-binoculars"></i> Vorschläge suchen';
+                    btn.innerHTML = '<i class="bi bi-binoculars"></i> ' + gettext('Vorschläge suchen');
                     holder.appendChild(btn);
                     input.after(holder);
                     holder.after(list);
@@ -286,17 +302,18 @@
             wrap.className = 'mb-3';
             const label = document.createElement('label');
             label.className = 'form-label small text-muted';
-            label.textContent = 'In allen Datenbanken (' + provider + ') suchen und einen Vorschlag übernehmen:';
+                label.textContent = interpolate(gettext('In allen Datenbanken (%(provider)s) suchen und einen Vorschlag übernehmen:'),
+                { provider: provider }, true);
             const searchGroup = document.createElement('div');
             searchGroup.className = 'input-group';
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
             searchInput.className = 'form-control';
-            searchInput.placeholder = 'Titel, Name, Stichwörter …';
+            searchInput.placeholder = gettext('Titel, Name, Stichwörter …');
             const searchBtn = document.createElement('button');
             searchBtn.type = 'button';
             searchBtn.className = 'btn btn-outline-primary';
-            searchBtn.innerHTML = '<i class="bi bi-binoculars"></i> Suchen';
+            searchBtn.innerHTML = '<i class="bi bi-binoculars"></i> ' + gettext('Suchen');
             const list = document.createElement('div');
             list.className = 'list-group mt-2';
             searchGroup.appendChild(searchInput);

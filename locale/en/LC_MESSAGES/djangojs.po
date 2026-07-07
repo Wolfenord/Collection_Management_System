@@ -1,0 +1,178 @@
+# English translation of the static JavaScript files (JavaScriptCatalog).
+# Source language is German; this catalogue provides the English strings.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: CMS 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-07 20:20+0200\n"
+"PO-Revision-Date: 2026-07-07 19:05+0200\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: static/js/app.js:46
+msgid "Kopiert!"
+msgstr "Copied!"
+
+#: static/js/app.js:63
+msgid "Weiter"
+msgstr "Next"
+
+#: static/js/app.js:63
+msgid "Zurück"
+msgstr "Back"
+
+#: static/js/app.js:63
+msgid "Fertig"
+msgstr "Done"
+
+#: static/js/capture.js:32
+msgid "Mit Kamera aufnehmen"
+msgstr "Take a photo with the camera"
+
+#: static/js/capture.js:51 static/js/scanner.js:81
+msgid "Kamera nicht verfügbar:"
+msgstr "Camera not available:"
+
+#: static/js/capture.js:53
+msgid "du kannst stattdessen eine Datei auswählen."
+msgstr "you can pick a file instead."
+
+#: static/js/lookup.js:30
+msgid "den externen Datenbanken"
+msgstr "the external databases"
+
+#: static/js/lookup.js:90
+msgid "Bild wird beim Speichern übernommen."
+msgstr "Image will be saved with the item."
+
+#: static/js/lookup.js:91
+msgid "Nicht übernehmen"
+msgstr "Don’t use it"
+
+#: static/js/lookup.js:95
+msgid "Bild wird nicht übernommen."
+msgstr "Image will not be used."
+
+#: static/js/lookup.js:96
+msgid "Bild öffnen"
+msgstr "Open image"
+
+#: static/js/lookup.js:103
+msgid ""
+"Achtung: „%(name)s“ mit diesem Code existiert bereits – <a href=\"%"
+"(url)s\">öffnen</a>."
+msgstr ""
+"Warning: “%(name)s” with this code already exists – <a href=\"%"
+"(url)s\">open</a>."
+
+#: static/js/lookup.js:120
+msgid ""
+"Vorschlag übernommen – %(count)s Feld(er) befüllt. Bitte prüfen und "
+"speichern."
+msgstr ""
+"Suggestion applied – %(count)s field(s) filled. Please review and save."
+
+#: static/js/lookup.js:129
+msgid "Keine Treffer in %(provider)s."
+msgstr "No matches in %(provider)s."
+
+#: static/js/lookup.js:152
+msgid "Übernehmen"
+msgstr "Apply"
+
+#: static/js/lookup.js:164 static/js/lookup.js:213
+msgid "Suche in %(provider)s …"
+msgstr "Searching %(provider)s …"
+
+#: static/js/lookup.js:172 static/js/lookup.js:220
+msgid "Fehler bei der Suche."
+msgstr "Search failed."
+
+#: static/js/lookup.js:178 static/js/lookup.js:241
+msgid "Suche nicht möglich (Netzwerk?)."
+msgstr "Search not possible (network issue?)."
+
+#: static/js/lookup.js:203
+msgid "Code in allen Datenbanken (%(provider)s) suchen und Felder befüllen"
+msgstr "Look up the code in all databases (%(provider)s) and fill the fields"
+
+#: static/js/lookup.js:205 static/js/lookup.js:316
+msgid "Suchen"
+msgstr "Search"
+
+#: static/js/lookup.js:225
+msgid "Kein Treffer in %(provider)s für „%(query)s“."
+msgstr "No match in %(provider)s for “%(query)s”."
+
+#: static/js/lookup.js:236
+msgid ""
+"%(count)s Feld(er) automatisch befüllt (Quellen: %(sources)s). Bitte prüfen "
+"und speichern."
+msgstr ""
+"%(count)s field(s) filled automatically (sources: %(sources)s). Please "
+"review and save."
+
+#: static/js/lookup.js:255
+msgid ""
+"Tipp: Code scannen oder eingeben – die Felder werden automatisch aus %"
+"(provider)s befüllt."
+msgstr ""
+"Tip: scan or enter a code – the fields are filled automatically from %"
+"(provider)s."
+
+#: static/js/lookup.js:275
+msgid ""
+"Mit diesem Wert in allen Datenbanken (%(provider)s) suchen und einen "
+"Vorschlag übernehmen"
+msgstr ""
+"Search all databases (%(provider)s) for this value and apply a suggestion"
+
+#: static/js/lookup.js:285
+msgid "Vorschläge suchen"
+msgstr "Search suggestions"
+
+#: static/js/lookup.js:305
+msgid ""
+"In allen Datenbanken (%(provider)s) suchen und einen Vorschlag übernehmen:"
+msgstr "Search all databases (%(provider)s) and apply a suggestion:"
+
+#: static/js/lookup.js:312
+msgid "Titel, Name, Stichwörter …"
+msgstr "Title, name, keywords …"
+
+#: static/js/passkeys.js:40
+msgid "Passkey-Vorgang fehlgeschlagen."
+msgstr "Passkey operation failed."
+
+#: static/js/passkeys.js:64
+msgid ""
+"Passkeys werden von diesem Browser nicht unterstützt oder die Seite läuft "
+"nicht über HTTPS."
+msgstr ""
+"Passkeys are not supported by this browser or the page is not served over "
+"HTTPS."
+
+#: static/js/passkeys.js:96
+msgid "Passkey-Registrierung fehlgeschlagen."
+msgstr "Passkey registration failed."
+
+#: static/js/passkeys.js:141
+msgid "Passkey-Anmeldung fehlgeschlagen."
+msgstr "Passkey sign-in failed."
+
+#: static/js/scanner.js:46
+msgid "Mit Kamera scannen"
+msgstr "Scan with the camera"
+
+#: static/js/scanner.js:76
+msgid "Keine Kamera gefunden."
+msgstr "No camera found."
+
+#: static/js/scanner.js:83
+msgid "du kannst den Code auch manuell eingeben."
+msgstr "you can also enter the code manually."

@@ -97,3 +97,55 @@ code {
     background-color: rgba(255, 255, 255, 0.08);
     box-shadow: 0 0 0 2px var(--bs-primary), rgba(0, 0, 0, 0.7) 0 0 0 5000px !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Mobile: stack the dynamic items table into label/value cards on phones.
+   Each <td> carries its column heading in data-label (set in the template);
+   header row and checkbox column are hidden, the Details button spans the
+   card footer. Applies only to tables with the .table-stack class.
+--------------------------------------------------------------------------- */
+@media (max-width: 575.98px) {
+    .table-stack thead {
+        display: none;
+    }
+    .table-stack tr {
+        display: block;
+        padding: 0.5rem 0.25rem;
+    }
+    .table-stack tbody tr + tr {
+        border-top: 2px solid var(--bs-border-color);
+    }
+    .table-stack td {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        border: 0;
+        padding: 0.15rem 0.5rem;
+    }
+    .table-stack td[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 38%;
+        max-width: 38%;
+        font-weight: 600;
+        color: var(--bs-secondary-color);
+        font-size: 0.85em;
+        overflow-wrap: anywhere;
+    }
+    .table-stack td[data-label] {
+        overflow-wrap: anywhere;
+    }
+    /* Bulk-select checkbox: small row without a label, aligned left. */
+    .table-stack td.table-stack-check {
+        padding-bottom: 0;
+    }
+    /* Details link becomes a full-width card footer button. */
+    .table-stack td.table-stack-actions {
+        display: block;
+        text-align: left !important;
+        padding-top: 0.35rem;
+    }
+    .table-stack td.table-stack-actions .btn {
+        display: block;
+        width: 100%;
+    }
+}

@@ -52,7 +52,7 @@ def api_view(func):
         if not key:
             return _error(_('API-Token fehlt (Authorization: Bearer <token>).'), 401)
         token = (ApiToken.objects.select_related('user')
-                 .filter(key=key, user__is_active=True).first())
+                 .filter(key_hash=ApiToken.hash_key(key), user__is_active=True).first())
         if token is None:
             return _error(_('Ungültiger API-Token.'), 401)
         token.touch()

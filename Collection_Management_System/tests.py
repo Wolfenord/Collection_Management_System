@@ -11,10 +11,22 @@ import tempfile
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import TestCase as DjangoTestCase
+from django.test import override_settings
 from django.urls import reverse
 from PIL import Image
+
+
+class TestCase(DjangoTestCase):
+    """Project TestCase: start every test with an empty cache so brute-force
+    and lookup rate-limit counters (accounts.throttling) never leak between
+    tests (SQLite reuses primary keys after the per-test rollback)."""
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        cache.clear()
 
 from . import imports, lookup_providers
 from .models import (
@@ -612,6 +624,20 @@ class ProviderTests(TestCase):
             results = lookup_providers.get_provider('auto').search('clean code')
         self.assertEqual(results[0]['title'], 'Clean Code')
 
+    def test_auto_search_merges_all_sources_and_dedupes_by_isbn(self):
+        # Every source answers: DNB contributes two records, Google and Open
+        # Library both return "Clean Code" with the same ISBN — the duplicate
+        # must collapse into a single entry.
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_SEARCH_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json',
+                                  side_effect=lambda url: GOOGLE_PAYLOAD if 'googleapis' in url
+                                  else OPENLIBRARY_SEARCH_PAYLOAD):
+            results = lookup_providers.get_provider('auto').search('hawking clean code')
+        titles = [r['title'] for r in results]
+        self.assertIn('Kurze Antworten auf große Fragen', titles)  # DNB
+        self.assertIn('The Clean Coder', titles)  # Open Library only
+        self.assertEqual(titles.count('Clean Code'), 1)  # Google + Open Library deduped
+
     def test_no_match_returns_empty(self):
         with mock.patch.object(lookup_providers, '_http_get_json', return_value={}):
             self.assertEqual(lookup_providers.get_provider('openlibrary').fetch('000'), {})
@@ -634,7 +660,10 @@ class LookupViewTests(TestCase):
 
     def test_lookup_maps_provider_data_to_field_keys(self):
         self.client.force_login(self.owner)
-        with mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
+        # The auto chain queries all sources: DNB (XML) answers empty here,
+        # Google gets no 'items' from this payload, Open Library matches.
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
             resp = self.client.get(self.url, {'q': '9780132350884'})
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -644,9 +673,12 @@ class LookupViewTests(TestCase):
         self.assertEqual(data['fields']['isbn'], '9780132350884')
         self.assertNotIn('notiz', data['fields'])  # unmapped field untouched
 
-    def test_lookup_requires_provider(self):
-        self.coll.lookup_provider = ''
-        self.coll.save()
+    def test_lookup_requires_field_mapping(self):
+        # Without any field mapped to an external attribute there is nothing
+        # to fill — the endpoint must answer 400 instead of querying sources.
+        for field in self.coll.fields.all():
+            field.config.pop('lookup_attribute', None)
+            field.save()
         self.client.force_login(self.owner)
         resp = self.client.get(self.url, {'q': '123'})
         self.assertEqual(resp.status_code, 400)
@@ -682,13 +714,15 @@ class LookupViewTests(TestCase):
         item = Item.objects.create(collection=self.coll,
                                    values={'name': 'Vorhanden', 'isbn': '978-0-13-235088-4'})
         self.client.force_login(self.owner)
-        with mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
             resp = self.client.get(self.url, {'q': '9780132350884'})
         duplicate = resp.json()['duplicate']
         self.assertEqual(duplicate['name'], 'Vorhanden')  # hyphens vs. digits normalised
         self.assertIn(str(item.pk), duplicate['url'])
         # Editing that very item must not warn about itself.
-        with mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json', return_value=OPENLIBRARY_PAYLOAD):
             resp = self.client.get(self.url, {'q': '9780132350884', 'exclude': str(item.pk)})
         self.assertIsNone(resp.json()['duplicate'])
 
@@ -708,8 +742,11 @@ class SearchViewTests(TestCase):
         self.client.force_login(self.owner)
 
     def test_search_maps_candidates_to_field_keys(self):
-        with mock.patch.object(lookup_providers, '_http_get_json',
-                               return_value=OPENLIBRARY_SEARCH_PAYLOAD):
+        # DNB answers empty, Google finds no 'items' in this payload — only
+        # Open Library's two candidates survive the merged auto search.
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json',
+                                  return_value=OPENLIBRARY_SEARCH_PAYLOAD):
             resp = self.client.get(self.url, {'q': 'clean code martin'})
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -722,10 +759,11 @@ class SearchViewTests(TestCase):
         self.assertIn('Robert C. Martin', first['label'])
         self.assertIn('covers.openlibrary.org', first['cover'])
 
-    def test_search_requires_provider_and_query(self):
+    def test_search_requires_query_and_field_mapping(self):
         self.assertEqual(self.client.get(self.url).status_code, 400)
-        self.coll.lookup_provider = ''
-        self.coll.save()
+        for field in self.coll.fields.all():
+            field.config.pop('lookup_attribute', None)
+            field.save()
         self.assertEqual(self.client.get(self.url, {'q': 'x'}).status_code, 400)
 
     def test_search_needs_edit_permission(self):
@@ -779,40 +817,35 @@ class FindTests(TestCase):
         self.assertEqual(resp.status_code, 403)
 
 
-class CollectionSettingsTests(TestCase):
-    def setUp(self):
-        self.owner = User.objects.create_user('owner', 'o@e.de', 'pw')
-        self.coll = Collection.objects.create(owner=self.owner, name='S')
-        self.client.force_login(self.owner)
-
-    def test_set_and_clear_provider(self):
-        url = reverse('collection_settings', args=[self.coll.pk])
-        self.client.post(url, {'lookup_provider': 'openlibrary'})
-        self.coll.refresh_from_db()
-        self.assertEqual(self.coll.lookup_provider, 'openlibrary')
-        self.client.post(url, {'lookup_provider': ''})
-        self.coll.refresh_from_db()
-        self.assertEqual(self.coll.lookup_provider, '')
-
-    def test_unknown_provider_rejected(self):
-        self.client.post(reverse('collection_settings', args=[self.coll.pk]), {'lookup_provider': 'nope'})
-        self.coll.refresh_from_db()
-        self.assertEqual(self.coll.lookup_provider, '')
-
-
-class BookPresetTests(TestCase):
+class PresetTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user('owner', 'o@e.de', 'pw')
         self.client.force_login(self.owner)
 
-    def test_create_with_book_preset_sets_provider_and_mapping(self):
+    def test_create_with_book_preset_maps_lookup_fields(self):
         self.client.post(reverse('collection_create'),
                          {'name': 'Meine Bücher', 'description': '', 'preset': 'books'})
         coll = Collection.objects.get(name='Meine Bücher')
-        self.assertEqual(coll.lookup_provider, 'openlibrary')
         isbn = coll.fields.get(key='isbn')
         self.assertEqual(isbn.config.get('lookup_attribute'), 'isbn')
         self.assertEqual(coll.fields.get(key='titel').config.get('lookup_attribute'), 'title')
+
+    def test_non_book_presets_create_their_fields(self):
+        from .services import PRESETS
+        for preset in ('movies', 'music', 'games'):
+            name = 'Vorlage %s' % preset
+            self.client.post(reverse('collection_create'),
+                             {'name': name, 'description': '', 'preset': preset})
+            coll = Collection.objects.get(name=name)
+            expected = [spec[0] for spec in PRESETS[preset]['fields']]
+            self.assertEqual(
+                list(coll.fields.order_by('order').values_list('key', flat=True)),
+                expected, preset)
+
+    def test_preset_choices_offered_in_form(self):
+        resp = self.client.get(reverse('collection_create'))
+        for value in ('books', 'movies', 'music', 'games'):
+            self.assertContains(resp, 'value="%s"' % value)
 
 
 # --- Internationalisation (German default + English) --------------------------
@@ -831,6 +864,19 @@ class I18nTests(TestCase):
         resp = self.client.get(reverse('login'))
         self.assertContains(resp, 'Anmelden')
 
+    def test_english_browser_header_is_ignored_without_explicit_choice(self):
+        # DefaultLanguageMiddleware: an English Accept-Language header alone
+        # must NOT switch the UI — German stays the default.
+        resp = self.client.get(reverse('login'), HTTP_ACCEPT_LANGUAGE='en-US,en;q=0.9')
+        self.assertContains(resp, 'Anmelden')
+        self.assertNotContains(resp, 'Sign in')
+
+    def test_explicit_language_cookie_beats_default(self):
+        from django.conf import settings as dj_settings
+        self.client.cookies[dj_settings.LANGUAGE_COOKIE_NAME] = 'en'
+        resp = self.client.get(reverse('login'), HTTP_ACCEPT_LANGUAGE='en-US,en;q=0.9')
+        self.assertContains(resp, 'Sign in')
+
     def test_set_language_switches_ui_to_english(self):
         # Persist English via the set_language endpoint, then a page renders EN.
         resp = self.client.post(reverse('set_language'),
@@ -842,6 +888,22 @@ class I18nTests(TestCase):
     def test_language_switcher_present_in_page(self):
         resp = self.client.get(reverse('login'))
         self.assertContains(resp, reverse('set_language'))
+
+    def test_javascript_catalogue_served_and_translated(self):
+        # Default (German = source language): the catalogue is served but
+        # carries no translations. With English chosen, the JS strings appear.
+        url = reverse('javascript-catalog')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('javascript', resp['Content-Type'])
+        from django.conf import settings as dj_settings
+        self.client.cookies[dj_settings.LANGUAGE_COOKIE_NAME] = 'en'
+        resp = self.client.get(url)
+        self.assertContains(resp, 'Search suggestions')  # 'Vorschläge suchen'
+
+    def test_base_template_loads_js_catalogue(self):
+        resp = self.client.get(reverse('login'))
+        self.assertContains(resp, reverse('javascript-catalog'))
 
 
 class LoanTests(TestCase):
@@ -1974,9 +2036,9 @@ class ApiTests(TestCase):
         add_field(self.col, 'name', 'Name', FieldType.TEXT, order=0, required=True)
         add_field(self.col, 'ort', 'Ort', FieldType.TEXT, order=1)
         CollectionShare.objects.create(collection=self.col, user=self.viewer, permission='view')
-        self.token = ApiToken.objects.create(user=self.owner, name='Test')
-        self.viewer_token = ApiToken.objects.create(user=self.viewer, name='Viewer')
-        self.auth = {'headers': {'Authorization': f'Bearer {self.token.key}'}}
+        self.token, self.token_key = ApiToken.create_for_user(self.owner, 'Test')
+        self.viewer_token, self.viewer_key = ApiToken.create_for_user(self.viewer, 'Viewer')
+        self.auth = {'headers': {'Authorization': f'Bearer {self.token_key}'}}
         self.items_url = reverse('api_items', args=[self.col.pk])
 
     def test_disabled_api_rejects_valid_token(self):
@@ -2078,7 +2140,7 @@ class ApiTests(TestCase):
 
     def test_viewer_can_read_but_not_write(self):
         Item.objects.create(collection=self.col, values={'name': 'Dune'})
-        viewer_auth = {'headers': {'Authorization': f'Bearer {self.viewer_token.key}'}}
+        viewer_auth = {'headers': {'Authorization': f'Bearer {self.viewer_key}'}}
         self.assertEqual(self.client.get(self.items_url, **viewer_auth).status_code, 200)
         resp = self.client.post(self.items_url, data='{"values": {"name": "Nein"}}',
                                 content_type='application/json', **viewer_auth)
@@ -2089,3 +2151,74 @@ class ApiTests(TestCase):
         self.client.get(reverse('api_collections'), **self.auth)
         self.token.refresh_from_db()
         self.assertIsNotNone(self.token.last_used_at)
+
+
+class SecurityHeaderTests(TestCase):
+    """Crawler protection and browser hardening headers on every response."""
+
+    def test_robots_txt_disallows_everything(self):
+        resp = self.client.get('/robots.txt')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'text/plain')
+        self.assertContains(resp, 'Disallow: /')
+
+    def test_x_robots_tag_and_permissions_policy_on_all_pages(self):
+        resp = self.client.get(reverse('login'))
+        self.assertIn('noindex', resp.headers.get('X-Robots-Tag', ''))
+        self.assertIn('camera=(self)', resp.headers.get('Permissions-Policy', ''))
+
+    def test_meta_robots_in_html(self):
+        resp = self.client.get(reverse('login'))
+        self.assertContains(resp, '<meta name="robots" content="noindex, nofollow">')
+
+    def test_content_security_policy_enforced_with_nonce(self):
+        resp = self.client.get(reverse('login'))
+        policy = resp.headers.get('Content-Security-Policy', '')
+        self.assertIn("default-src 'self'", policy)
+        self.assertIn("frame-ancestors 'none'", policy)
+        self.assertIn('nonce-', policy)  # script nonce present …
+        import re
+        nonce = re.search(r"'nonce-([^']+)'", policy).group(1)
+        self.assertContains(resp, 'nonce="%s"' % nonce)  # … and used inline
+
+    def test_no_third_party_asset_urls_in_pages(self):
+        # GDPR: no request to CDNs & Co. may be triggered by our pages.
+        resp = self.client.get(reverse('login'))
+        self.assertNotContains(resp, 'cdn.jsdelivr.net')
+
+    def test_clickjacking_and_sniffing_headers(self):
+        resp = self.client.get(reverse('login'))
+        self.assertEqual(resp.headers.get('X-Frame-Options'), 'DENY')
+        self.assertEqual(resp.headers.get('X-Content-Type-Options'), 'nosniff')
+        self.assertEqual(resp.headers.get('Referrer-Policy'), 'same-origin')
+
+
+class LookupThrottleTests(TestCase):
+    """External-database lookups are capped per user (outbound-request abuse)."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.coll = Collection.objects.create(owner=self.owner, name='Bücher')
+        add_field(self.coll, 'isbn', 'ISBN', FieldType.ISBN, order=0,
+                  config={'lookup_attribute': 'isbn'})
+        self.client.force_login(self.owner)
+
+    def test_lookup_returns_429_after_limit(self):
+        url = reverse('item_lookup', args=[self.coll.pk])
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json', return_value={}):
+            for _ in range(30):
+                self.assertEqual(self.client.get(url, {'q': '123'}).status_code, 200)
+            resp = self.client.get(url, {'q': '123'})
+        self.assertEqual(resp.status_code, 429)
+        self.assertFalse(resp.json()['ok'])
+
+    def test_search_shares_the_same_user_budget(self):
+        lookup_url = reverse('item_lookup', args=[self.coll.pk])
+        search_url = reverse('item_search', args=[self.coll.pk])
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=DNB_EMPTY_PAYLOAD), \
+                mock.patch.object(lookup_providers, '_http_get_json', return_value={}):
+            for _ in range(30):
+                self.client.get(lookup_url, {'q': '123'})
+            resp = self.client.get(search_url, {'q': 'hawking'})
+        self.assertEqual(resp.status_code, 429)
