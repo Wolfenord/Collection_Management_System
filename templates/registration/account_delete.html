@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Konto löschen" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card border-danger shadow-sm"><div class="card-body p-4">
+            <h1 class="h4 text-danger mb-3"><i class="bi bi-exclamation-triangle"></i> {% trans "Konto endgültig löschen" %}</h1>
+
+            {% if sole_superuser %}
+            <div class="alert alert-warning">
+                {% blocktrans %}Du bist der einzige aktive Administrator dieser Installation.
+                Lege zuerst einen weiteren Administrator an (oder lösche die Installation
+                als Ganzes) — sonst wäre die Verwaltung dauerhaft ausgesperrt.{% endblocktrans %}
+            </div>
+            <a href="{% url 'profile' %}" class="btn btn-outline-secondary">{% trans "Zurück zum Profil" %}</a>
+            {% else %}
+            <p>
+                {% blocktrans count counter=collection_count %}Dabei wird <strong>{{ collection_count }} Sammlung</strong>{% plural %}Dabei werden <strong>{{ collection_count }} Sammlungen</strong>{% endblocktrans %}
+                {% blocktrans count counter=item_count %}mit <strong>{{ item_count }} Gegenstand</strong> unwiderruflich gelöscht{% plural %}mit <strong>{{ item_count }} Gegenständen</strong> unwiderruflich gelöscht{% endblocktrans %}
+                — {% trans "einschließlich aller hochgeladenen Dateien, Ausleihen, Freigaben, API-Tokens und Passkeys." %}
+            </p>
+            <p class="small text-muted">
+                {% blocktrans %}Gegenstände, die du in Sammlungen <em>anderer</em> angelegt hast,
+                bleiben dort erhalten, verlieren aber die Verknüpfung zu deinem Konto.{% endblocktrans %}
+                {% trans "Tipp: Exportiere vorher deine Daten." %}
+                <a href="{% url 'data_export' %}">{% trans "Datenexport (JSON)" %}</a>
+            </p>
+            <form method="post" data-confirm="{% trans 'Wirklich? Diese Aktion kann nicht rückgängig gemacht werden.' %}">
+                {% csrf_token %}
+                {% if needs_password %}
+                <div class="mb-3">
+                    <label class="form-label" for="deletePassword">{% trans "Zur Bestätigung: dein Passwort" %}</label>
+                    <input type="password" name="password" id="deletePassword" class="form-control"
+                           autocomplete="current-password" required>
+                </div>
+                {% else %}
+                <div class="mb-3">
+                    <label class="form-label" for="deleteConfirm">
+                        {% blocktrans with username=user.get_username %}Zur Bestätigung: tippe deinen Benutzernamen „{{ username }}“{% endblocktrans %}
+                    </label>
+                    <input type="text" name="confirm" id="deleteConfirm" class="form-control"
+                           autocomplete="off" required>
+                </div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> {% trans "Konto und alle Daten löschen" %}
+                    </button>
+                    <a href="{% url 'profile' %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
+                </div>
+            </form>
+            {% endif %}
+        </div></div>
+    </div>
+</div>
+{% endblock %}

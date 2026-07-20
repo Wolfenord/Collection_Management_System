@@ -48,6 +48,8 @@ class SettingDef:
     choices: tuple[tuple[str, object], ...] | None = None
     # Users may override this setting for themselves (User.preferences).
     per_user: bool = False
+    # For 'str' kind: render a textarea (multi-line values, e.g. addresses).
+    multiline: bool = False
 
     def coerce(self, raw: object):
         """Validate/convert a raw (DB/INI/form) value; raise ValueError if bad."""
@@ -190,6 +192,39 @@ REGISTRY: dict[str, SettingDef] = {
             help_text=_('Maximale Wartezeit für Anfragen an Open Library, '
                         'Google Books usw.'),
             kind='int', default=8, min_value=1, max_value=60,
+        ),
+        SettingDef(
+            key='tmdb_api_key',
+            label=_('TMDb-API-Schlüssel (Filme & Serien)'),
+            help_text=_('Kostenloser API-Schlüssel von themoviedb.org — schaltet die '
+                        'Film-/Seriensuche frei. Leer = TMDb wird nicht abgefragt.'),
+            kind='str', default='', max_length=64,
+        ),
+        SettingDef(
+            key='rawg_api_key',
+            label=_('RAWG-API-Schlüssel (Videospiele)'),
+            help_text=_('Kostenloser API-Schlüssel von rawg.io — schaltet die '
+                        'Videospielsuche frei. Leer = RAWG wird nicht abgefragt.'),
+            kind='str', default='', max_length=64,
+        ),
+        SettingDef(
+            key='legal_operator',
+            label=_('Impressum: Betreiber'),
+            help_text=_('Name des Betreibers/Verantwortlichen für Impressum und '
+                        'Datenschutzerklärung.'),
+            kind='str', default='', max_length=200,
+        ),
+        SettingDef(
+            key='legal_address',
+            label=_('Impressum: Anschrift'),
+            help_text=_('Postanschrift des Betreibers (mehrzeilig möglich).'),
+            kind='str', default='', max_length=500, multiline=True,
+        ),
+        SettingDef(
+            key='legal_email',
+            label=_('Impressum: Kontakt-E-Mail'),
+            help_text=_('E-Mail-Adresse für Anfragen zu Impressum und Datenschutz.'),
+            kind='str', default='', max_length=200,
         ),
         SettingDef(
             key='global_search_max_items',

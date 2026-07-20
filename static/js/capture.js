@@ -38,6 +38,18 @@
             group.appendChild(btn);
         });
 
+        // Ask for continuous autofocus where the camera exposes it, so
+        // close-up shots (labels, receipts) come out sharp. Feature-detected;
+        // unsupported browsers simply keep their default behaviour.
+        function optimizeFocus(track) {
+            if (!track || !track.getCapabilities || !track.applyConstraints) return;
+            const caps = track.getCapabilities();
+            if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+                track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+                    .catch(function () { /* best effort */ });
+            }
+        }
+
         function start() {
             errorBox.classList.add('d-none');
             shotBtn.disabled = true;
@@ -45,6 +57,7 @@
                 .then(function (s) {
                     stream = s;
                     video.srcObject = s;
+                    optimizeFocus(s.getVideoTracks()[0]);
                     shotBtn.disabled = false;
                 })
                 .catch(function (err) {

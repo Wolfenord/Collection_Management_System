@@ -47,16 +47,27 @@
                     {% endfor %}
                 </ul>
                 {% endif %}
-                <div class="d-flex gap-2">
-                    <input type="text" id="passkeyLabel" class="form-control form-control-sm"
-                           placeholder="{% trans 'Bezeichnung, z. B. Handy oder YubiKey' %}" maxlength="100">
-                    <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" id="passkeyAdd"
+                {% if passkey_mdns_url %}
+                {# Opened via raw IP: WebAuthn cannot work here — link to the name-based URL instead. #}
+                <div class="alert alert-warning small mb-0">
+                    <i class="bi bi-fingerprint"></i>
+                    {% blocktrans with url=passkey_mdns_url %}Passkeys funktionieren nicht über die IP-Adresse. Öffne die Seite dafür über den Gerätenamen: <a href="{{ url }}" class="alert-link">{{ url }}</a>{% endblocktrans %}
+                </div>
+                {% else %}
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <button type="button" class="btn btn-sm btn-primary text-nowrap" id="passkeyAdd"
                             data-begin-url="{% url 'passkey_register_begin' %}"
                             data-complete-url="{% url 'passkey_register_complete' %}">
-                        <i class="bi bi-plus-lg"></i> {% trans "Passkey hinzufügen" %}
+                        <i class="bi bi-fingerprint"></i> {% trans "Passkey hinzufügen" %}
                     </button>
+                    <input type="text" id="passkeyLabel" class="form-control form-control-sm flex-grow-1 w-auto"
+                           placeholder="{% trans 'Name (optional, sonst z. B. „iPhone“)' %}" maxlength="100">
+                </div>
+                <div class="form-text mt-1">
+                    {% trans "Ein Tipp auf den Knopf genügt – dein Gerät fragt direkt nach Face ID, Fingerabdruck oder PIN." %}
                 </div>
                 <div id="passkeyStatus" class="form-text mt-2 d-none"></div>
+                {% endif %}
             </div>
         </div>
 
@@ -103,6 +114,29 @@
                         <i class="bi bi-plus-lg"></i> {% trans "Token erstellen" %}
                     </button>
                 </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-2"><i class="bi bi-shield-check"></i> {% trans "Deine Daten (DSGVO)" %}</h2>
+                <p class="text-body-secondary small">
+                    {% blocktrans %}Du behältst die volle Kontrolle: Lade jederzeit eine
+                    vollständige Kopie deiner Daten herunter oder lösche dein Konto samt
+                    aller Sammlungen selbst — ohne Nachfragen.{% endblocktrans %}
+                </p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'data_export' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download"></i> {% trans "Alle Daten exportieren (JSON)" %}
+                    </a>
+                    <a href="{% url 'account_delete' %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i> {% trans "Konto löschen…" %}
+                    </a>
+                </div>
+                <div class="form-text mt-2">
+                    <a href="{% url 'privacy' %}">{% trans "Datenschutzerklärung" %}</a> ·
+                    <a href="{% url 'imprint' %}">{% trans "Impressum" %}</a>
+                </div>
             </div>
         </div>
     </div>

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: CMS 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-07 20:20+0200\n"
+"POT-Creation-Date: 2026-07-08 21:38+0200\n"
 "PO-Revision-Date: 2026-07-07 19:05+0200\n"
 "Language-Team: English\n"
 "Language: en\n"
@@ -34,11 +34,11 @@ msgstr "Done"
 msgid "Mit Kamera aufnehmen"
 msgstr "Take a photo with the camera"
 
-#: static/js/capture.js:51 static/js/scanner.js:81
+#: static/js/capture.js:64 static/js/scanner.js:106
 msgid "Kamera nicht verfügbar:"
 msgstr "Camera not available:"
 
-#: static/js/capture.js:53
+#: static/js/capture.js:66
 msgid "du kannst stattdessen eine Datei auswählen."
 msgstr "you can pick a file instead."
 
@@ -149,7 +149,23 @@ msgstr "Title, name, keywords …"
 msgid "Passkey-Vorgang fehlgeschlagen."
 msgstr "Passkey operation failed."
 
+#: static/js/passkeys.js:61
+msgid "Vorgang abgebrochen oder Zeit abgelaufen – bitte erneut versuchen."
+msgstr "Cancelled or timed out – please try again."
+
 #: static/js/passkeys.js:64
+msgid ""
+"Passkeys funktionieren über diese Adresse nicht – die Seite über den "
+"Gerätenamen statt der IP öffnen."
+msgstr ""
+"Passkeys do not work via this address – open the page through the device "
+"name instead of the IP."
+
+#: static/js/passkeys.js:67
+msgid "Auf diesem Gerät ist für dein Konto bereits ein Passkey gespeichert."
+msgstr "This device already holds a passkey for your account."
+
+#: static/js/passkeys.js:79
 msgid ""
 "Passkeys werden von diesem Browser nicht unterstützt oder die Seite läuft "
 "nicht über HTTPS."
@@ -157,11 +173,11 @@ msgstr ""
 "Passkeys are not supported by this browser or the page is not served over "
 "HTTPS."
 
-#: static/js/passkeys.js:96
+#: static/js/passkeys.js:111
 msgid "Passkey-Registrierung fehlgeschlagen."
 msgstr "Passkey registration failed."
 
-#: static/js/passkeys.js:141
+#: static/js/passkeys.js:156
 msgid "Passkey-Anmeldung fehlgeschlagen."
 msgstr "Passkey sign-in failed."
 
@@ -169,10 +185,10 @@ msgstr "Passkey sign-in failed."
 msgid "Mit Kamera scannen"
 msgstr "Scan with the camera"
 
-#: static/js/scanner.js:76
+#: static/js/scanner.js:99
 msgid "Keine Kamera gefunden."
 msgstr "No camera found."
 
-#: static/js/scanner.js:83
+#: static/js/scanner.js:108
 msgid "du kannst den Code auch manuell eingeben."
 msgstr "you can also enter the code manually."

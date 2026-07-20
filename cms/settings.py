@@ -88,6 +88,10 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 # Runtime settings as {{ site_config.<key> }} (lazy per lookup).
                 'Collection_Management_System.context_processors.site_config',
+                # Bell menu: notifications + overdue-loan count (lazy).
+                'Collection_Management_System.context_processors.notifications',
+                # {{ passkey_mdns_url }} when the site is opened via raw IP.
+                'Collection_Management_System.context_processors.passkey_hint',
             ],
         },
     },
@@ -263,7 +267,8 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # Content-Security-Policy (enforced; Django 6 native). All assets are served
 # from this origin (static/vendor/, see base.html), inline scripts carry a
 # per-request nonce. Only lookup cover previews load images from the
-# whitelisted book-database hosts (same set as lookup_providers.COVER_HOSTS).
+# whitelisted media-database hosts (same set as lookup_providers.COVER_HOSTS,
+# plus the archive.org mirrors Cover Art Archive redirects to).
 from django.utils.csp import CSP
 
 SECURE_CSP = {
@@ -274,6 +279,9 @@ SECURE_CSP = {
         CSP.SELF, 'data:',
         'https://covers.openlibrary.org', 'https://books.google.com',
         'https://books.googleusercontent.com', 'https://portal.dnb.de',
+        'https://coverartarchive.org', 'https://archive.org', 'https://*.archive.org',
+        'https://image.tmdb.org', 'https://media.rawg.io',
+        'https://commons.wikimedia.org', 'https://upload.wikimedia.org',
     ],
     'font-src': [CSP.SELF],
     'connect-src': [CSP.SELF],

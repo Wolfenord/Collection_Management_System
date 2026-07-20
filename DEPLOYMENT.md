@@ -26,7 +26,13 @@ There are two kinds of configuration, resolved in this order:
 
 ## 1. PostgreSQL
 
-Create the database and user (psql as a superuser):
+**Arch Linux: alles automatisch** — `./scripts/setup_postgres.sh` installiert
+PostgreSQL, initialisiert den Cluster, legt Rolle+Datenbank an, stellt `.env`
+um, migriert und übernimmt auf Wunsch die SQLite-Daten (`--with-data` /
+`--no-data` für nicht-interaktive Läufe). Idempotent, mehrfach ausführbar.
+
+Manuell (andere Distributionen) — create the database and user (psql as a
+superuser):
 
 ```sql
 CREATE DATABASE cms;
@@ -77,6 +83,61 @@ Example nginx location for uploads:
 location /media/ { alias /path/to/app/media/; }
 ```
 
+## 4b. Lokales HTTPS zum Testen im Heimnetz
+
+Kamera-Scan, Fotoaufnahme und Passkeys (WebAuthn) funktionieren nur in einem
+*Secure Context* — `http://<IP>:8080` reicht dafür nicht. Für Tests vom Handy
+oder anderen Geräten im Netzwerk startet `run_https.py` die App mit TLS:
+
+```bash
+.venv/bin/python run_https.py          # https://0.0.0.0:8443, Auto-Reload
+.venv/bin/python run_https.py 9443     # anderer Port
+```
+
+Das Skript erzeugt ein selbstsigniertes Zertifikat in `dev-certs/` (gitignored)
+mit `localhost`, dem Rechnernamen, `<rechnername>.local` und der aktuellen
+LAN-IP als SAN — und erneuert es automatisch, wenn sich die IP ändert oder es
+abläuft. `ALLOWED_HOSTS` wird für diese Namen ergänzt; statische Dateien kommen
+über WhiteNoise, Uploads über die DEBUG-Media-Route.
+
+Auf jedem Gerät einmal die Browser-Warnung zum selbstsignierten Zertifikat
+bestätigen. **Passkeys:** WebAuthn akzeptiert keine rohen IP-Adressen als
+Domain — dafür `https://<rechnername>.local:8443` verwenden (mDNS, funktioniert
+auf Android/iOS/Desktop); Kamera & Co. gehen auch über die IP.
+
+### Ohne Zertifikatswarnung: mkcert (empfohlen)
+
+Ist [mkcert](https://github.com/FiloSottile/mkcert) installiert, stellt
+`run_https.py` das Zertifikat automatisch darüber aus — auf diesem Rechner
+verschwindet die Browser-Warnung komplett:
+
+```bash
+sudo pacman -S mkcert   # Arch; sonst: brew install mkcert / choco install mkcert
+mkcert -install         # lokale Root-CA in die Trust-Stores eintragen (einmalig)
+.venv/bin/python run_https.py   # erkennt mkcert und stellt neu aus
+```
+
+Bei jeder Neuausstellung legt das Skript den **öffentlichen** Teil der Root-CA
+als `dev-certs/mkcert-root-ca.pem` ab. Diese Datei auf andere Geräte übertragen
+(KDE Connect, USB, Mail an sich selbst) und dort einmalig importieren, dann
+gibt es auch dort keine Warnung:
+
+* **Android:** Einstellungen → Sicherheit & Datenschutz → Weitere Einstellungen
+  → Verschlüsselung & Anmeldedaten → Zertifikat installieren → **CA-Zertifikat**
+  → Datei wählen (Pfad variiert je nach Hersteller; Warnhinweis bestätigen).
+* **iOS/iPadOS:** Datei per AirDrop/Mail öffnen → Einstellungen → „Profil
+  geladen“ installieren → danach unter Allgemein → Info →
+  Zertifikatsvertrauenseinstellungen die CA **aktivieren**.
+* **Windows/macOS/Linux-Clients:** Datei doppelklicken bzw. in den
+  Zertifikatsspeicher „Vertrauenswürdige Stammzertifizierungsstellen“
+  importieren.
+
+Sicherheit: `rootCA.pem` ist unbedenklich weitergebbar. Der zugehörige
+**private CA-Schlüssel** (`rootCA-key.pem` im Ordner von `mkcert -CAROOT`)
+bleibt auf diesem Rechner und darf nie kopiert werden — wer ihn besitzt, kann
+für jedes von den Geräten besuchte HTTPS-Ziel gültige Zertifikate fälschen.
+Aus demselben Grund die Root-CA nur auf eigenen Geräten importieren.
+
 ## 5. Periodic jobs (cron)
 
 Two management commands are meant to run on a schedule; both are no-ops unless
@@ -95,6 +156,19 @@ the corresponding runtime settings are enabled/configured in the web UI:
 python manage.py check --deploy   # should report no issues with the prod env
 python manage.py test             # full test suite
 ```
+
+## 7. Nach dem ersten Start (Web-UI)
+
+Als Staff-Nutzer unter **Systemeinstellungen** (`/settings/`):
+
+- **Impressum: Betreiber / Anschrift / Kontakt-E-Mail** ausfüllen — erscheint
+  auf den öffentlichen Rechtsseiten `/impressum/` und `/datenschutz/`
+  (DSGVO/DDG-Pflichtangaben).
+- Optional **TMDb-API-Schlüssel** (themoviedb.org) und **RAWG-API-Schlüssel**
+  (rawg.io) eintragen — schaltet die Film-/Serien- bzw. Videospielsuche der
+  automatischen Befüllung frei. Bücher (DNB, Google Books, Open Library),
+  Musik (MusicBrainz), Brettspiele (Wikidata) und generische EAN-Produkte
+  (UPCitemdb) funktionieren ohne Schlüssel.
 
 ## Notes
 

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Impressum" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="h3 mb-4">{% trans "Impressum" %}</h1>
+
+        {% if site_config.legal_operator or site_config.legal_address or site_config.legal_email %}
+        <div class="card shadow-sm mb-4"><div class="card-body">
+            <h2 class="h6 text-muted">{% trans "Angaben zum Betreiber" %}</h2>
+            {% if site_config.legal_operator %}<div class="fw-semibold">{{ site_config.legal_operator }}</div>{% endif %}
+            {% if site_config.legal_address %}<div style="white-space: pre-line">{{ site_config.legal_address }}</div>{% endif %}
+            {% if site_config.legal_email %}
+            <div class="mt-2">{% trans "E-Mail" %}:
+                <a href="mailto:{{ site_config.legal_email }}">{{ site_config.legal_email }}</a>
+            </div>
+            {% endif %}
+        </div></div>
+        {% else %}
+        <div class="alert alert-warning">
+            {% trans "Für diese Installation wurden noch keine Betreiberangaben hinterlegt." %}
+            {% if user.is_staff %}
+            <a href="{% url 'site_settings' %}" class="alert-link">{% trans "Jetzt in den Systemeinstellungen eintragen." %}</a>
+            {% else %}
+            {% trans "Bitte wende dich an die Administratorin / den Administrator dieser Installation." %}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <p class="text-muted small">
+            {% blocktrans %}Diese Anwendung („Collection Management System“) ist eine selbst
+            gehostete Software zur privaten Sammlungsverwaltung. Verantwortlich für den
+            Betrieb dieser Installation ist die oben genannte Stelle.{% endblocktrans %}
+        </p>
+        <p class="small"><a href="{% url 'privacy' %}">{% trans "Zur Datenschutzerklärung" %}</a></p>
+    </div>
+</div>
+{% endblock %}

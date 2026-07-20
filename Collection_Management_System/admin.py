@@ -12,9 +12,24 @@ from .models import (
     ItemAsset,
     ItemType,
     Loan,
+    Notification,
+    SavedView,
     SettingChange,
     SiteSetting,
 )
+
+
+@admin.register(SavedView)
+class SavedViewAdmin(admin.ModelAdmin):
+    list_display = ('name', 'collection', 'created_by', 'created_at')
+    search_fields = ('name', 'collection__name')
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'kind', 'key', 'created_at', 'read_at')
+    list_filter = ('kind',)
+    search_fields = ('user__username', 'key')
 
 
 class FieldDefinitionInline(admin.TabularInline):

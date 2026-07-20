@@ -11,10 +11,16 @@ urlpatterns = [
 
     path('', views.dashboard, name='dashboard'),
     path('search/', views.global_search, name='global_search'),
+    path('prices/', views.price_search_page, name='price_search'),
+    path('notifications/<int:pk>/open/', views.notification_open, name='notification_open'),
+    path('notifications/read/', views.notifications_read_all, name='notifications_read_all'),
+    path('collections/<uuid:pk>/items/<uuid:item_pk>/prices/',
+         views.item_price_search, name='item_price_search'),
     path('settings/', views.site_settings, name='site_settings'),
     path('settings/export.ini', views.site_settings_export, name='site_settings_export'),
     path('collections/', views.collection_list, name='collection_list'),
     path('collections/new/', views.collection_create, name='collection_create'),
+    path('collections/restore/', views.collection_restore, name='collection_restore'),
     path('collections/<uuid:pk>/', views.collection_detail, name='collection_detail'),
     path('collections/<uuid:pk>/edit/', views.collection_edit, name='collection_edit'),
     path('collections/<uuid:pk>/delete/', views.collection_delete, name='collection_delete'),
@@ -25,6 +31,17 @@ urlpatterns = [
     path('collections/<uuid:pk>/fields/<uuid:field_pk>/edit/', views.field_edit, name='field_edit'),
     path('collections/<uuid:pk>/fields/<uuid:field_pk>/delete/', views.field_delete, name='field_delete'),
 
+    # Saved views (named filter states)
+    path('collections/<uuid:pk>/views/new/', views.saved_view_create, name='saved_view_create'),
+    path('collections/<uuid:pk>/views/<int:view_pk>/delete/', views.saved_view_delete,
+         name='saved_view_delete'),
+
+    # Per-item photo gallery
+    path('collections/<uuid:pk>/items/<uuid:item_pk>/photos/', views.item_photo_add,
+         name='item_photo_add'),
+    path('collections/<uuid:pk>/items/<uuid:item_pk>/photos/<uuid:asset_pk>/delete/',
+         views.item_photo_delete, name='item_photo_delete'),
+
     # Sharing
     path('collections/<uuid:pk>/shares/', views.collection_shares, name='collection_shares'),
     path('collections/<uuid:pk>/shares/<int:share_pk>/delete/', views.share_delete, name='share_delete'),
@@ -34,6 +51,7 @@ urlpatterns = [
 
     # Export
     path('collections/<uuid:pk>/export.xlsx', views.collection_export, name='collection_export'),
+    path('collections/<uuid:pk>/backup.zip', views.collection_backup, name='collection_backup'),
     path('collections/<uuid:pk>/labels.pdf', views.collection_labels, name='collection_labels'),
 
     # QR / barcode

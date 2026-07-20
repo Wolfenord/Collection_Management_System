@@ -38,7 +38,7 @@ class CollectionForm(forms.ModelForm):
 
     class Meta:
         model = Collection
-        fields = ['name', 'description']
+        fields = ['name', 'description', 'lookup_provider']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('z. B. Meine Büchersammlung')}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -49,13 +49,26 @@ class CollectionForm(forms.ModelForm):
         # Note: UUID pks have a default, so a *new* instance already carries a pk —
         # `_state.adding` is the reliable "not yet saved" signal here.
         if not self.instance._state.adding:
-            # Editing an existing collection: presets/templates only apply on creation.
+            # Editing an existing collection: presets/templates only apply on
+            # creation — instead the media kind (which external databases and
+            # price platforms are used) becomes changeable.
             del self.fields['preset']
             del self.fields['template']
-        elif user is not None:
-            # Import here to avoid a circular import at module load.
-            from .services import collections_for_user
-            self.fields['template'].queryset = collections_for_user(user)
+            self.fields['lookup_provider'] = forms.ChoiceField(
+                choices=lookup_providers.MEDIA_KINDS, required=False,
+                label=_('Schwerpunkt der Sammlung'),
+                help_text=_('Bestimmt, welche externen Datenbanken die automatische '
+                            'Suche abfragt und welche Plattformen der Preisvergleich '
+                            'vorschlägt.'),
+                widget=forms.Select(attrs={'class': 'form-select'}),
+            )
+        else:
+            # Creation: the preset/template determines the media kind.
+            del self.fields['lookup_provider']
+            if user is not None:
+                # Import here to avoid a circular import at module load.
+                from .services import collections_for_user
+                self.fields['template'].queryset = collections_for_user(user)
 
 
 class FieldDefinitionForm(forms.ModelForm):
@@ -109,6 +122,11 @@ class FieldDefinitionForm(forms.ModelForm):
         key = self.cleaned_data.get('key') or ''
         if not key:
             key = slugify(self.cleaned_data.get('label', ''))
+        if key.startswith('_'):
+            # Leading underscores are reserved for internal keys (e.g. the
+            # per-item photo gallery stores assets under '__gallery').
+            raise forms.ValidationError(
+                _('Schlüssel dürfen nicht mit „_“ beginnen (intern reserviert).'))
         return key
 
     def clean(self):
@@ -192,10 +210,13 @@ class SiteSettingsForm(forms.Form):
             else:
                 # required=False: the empty string is a legitimate value
                 # (e.g. "no extension restriction").
+                widget = (forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
+                          if definition.multiline
+                          else forms.TextInput(attrs={'class': 'form-control'}))
                 self.fields[key] = forms.CharField(
                     required=False, label=definition.label, help_text=definition.help_text,
                     initial=initial, max_length=definition.max_length,
-                    widget=forms.TextInput(attrs={'class': 'form-control'}),
+                    widget=widget,
                 )
 
     def save(self, user=None) -> None:
@@ -231,7 +252,18 @@ class ShareForm(forms.Form):
         return ident
 
     def save(self):
-        return CollectionShare.objects.update_or_create(
+        share, created = CollectionShare.objects.update_or_create(
             collection=self.collection, user=self.target_user,
             defaults={'permission': self.cleaned_data['permission']},
         )
+        # Tell the recipient about the (new or changed) access — bell menu.
+        from django.urls import reverse
+        from .models import Notification
+        Notification.push(
+            share.user, kind=Notification.KIND_SHARE, key=f'share:{share.pk}',
+            url=reverse('collection_detail', args=[self.collection.pk]),
+            payload={'user': str(self.collection.owner),
+                     'collection': self.collection.name,
+                     'permission': share.permission},
+        )
+        return share, created

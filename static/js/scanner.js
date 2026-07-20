@@ -67,6 +67,29 @@
             if (modal) modal.hide();
         }
 
+        // Close-up sharpness: browsers start the camera without any focus
+        // preference, and many phones then only focus at a distance. Where the
+        // track supports it, switch to continuous autofocus and add a slight
+        // zoom (helps main lenses whose minimum focus distance is too far for
+        // a barcode held close — e.g. iPhones, which expose zoom but not
+        // focusMode). Everything is feature-detected; unsupported = no-op.
+        function optimizeFocus(video) {
+            const stream = video && video.srcObject;
+            const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+            if (!track || !track.getCapabilities || !track.applyConstraints) return;
+            const caps = track.getCapabilities();
+            const advanced = [];
+            if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+                advanced.push({ focusMode: 'continuous' });
+            }
+            if (caps.zoom && caps.zoom.max >= 2) {
+                advanced.push({ zoom: Math.min(2, caps.zoom.max) });
+            }
+            if (advanced.length) {
+                track.applyConstraints({ advanced: advanced }).catch(function () { /* best effort */ });
+            }
+        }
+
         function start() {
             errorBox.classList.add('d-none');
             scanner = new window.Html5Qrcode('scanRegion', {
@@ -77,6 +100,8 @@
                 // Prefer the rear camera (usually the last entry).
                 const camId = cameras[cameras.length - 1].id;
                 return scanner.start(camId, { fps: 10, qrbox: { width: 260, height: 160 } }, onDecode, function () {});
+            }).then(function () {
+                optimizeFocus(document.querySelector('#scanRegion video'));
             }).catch(function (err) {
                 errorBox.textContent = gettext('Kamera nicht verfügbar:') + ' ' +
                     (err && err.message ? err.message : err) + ' – ' +

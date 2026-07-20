@@ -15,8 +15,26 @@
         {% if loan %}<span class="badge text-bg-warning">{% trans "Verliehen" %}</span>{% endif %}
         <div class="text-muted small mt-1">{% trans "ID" %}: <code>{{ item.id }}</code></div>
     </div>
-    {% if can_edit %}
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-2 flex-wrap align-items-start">
+        <div class="btn-group" role="group" aria-label="{% trans 'Blättern' %}">
+            {% if newer_item %}
+            <a href="{% url 'item_detail' collection.pk newer_item.pk %}" class="btn btn-outline-secondary"
+               title="{% trans 'Vorheriger Gegenstand (neuer)' %}"><i class="bi bi-chevron-left"></i></a>
+            {% else %}
+            <span class="btn btn-outline-secondary disabled"><i class="bi bi-chevron-left"></i></span>
+            {% endif %}
+            {% if older_item %}
+            <a href="{% url 'item_detail' collection.pk older_item.pk %}" class="btn btn-outline-secondary"
+               title="{% trans 'Nächster Gegenstand (älter)' %}"><i class="bi bi-chevron-right"></i></a>
+            {% else %}
+            <span class="btn btn-outline-secondary disabled"><i class="bi bi-chevron-right"></i></span>
+            {% endif %}
+        </div>
+        <a href="{% url 'item_price_search' collection.pk item.pk %}" class="btn btn-outline-success"
+           title="{% trans 'Preise & Angebote auf vielen Plattformen vergleichen (vorbefüllt mit Code/Titel)' %}">
+            <i class="bi bi-tags"></i> {% trans "Preisvergleich" %}
+        </a>
+        {% if can_edit %}
         <a href="{% url 'item_edit' collection.pk item.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {% trans "Bearbeiten" %}</a>
         <form method="post" action="{% url 'item_duplicate' collection.pk item.pk %}" class="d-inline">
             {% csrf_token %}
@@ -26,26 +44,72 @@
             </button>
         </form>
         <a href="{% url 'item_delete' collection.pk item.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> {% trans "Löschen" %}</a>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 <div class="row g-3">
     <div class="col-lg-8">
-        <div class="card shadow-sm h-100"><div class="card-body">
+        <div class="card shadow-sm"><div class="card-body">
             <dl class="row mb-0">
                 {% for field, cell in pairs %}
                 <dt class="col-sm-4 text-muted">{{ field.label }}</dt>
                 <dd class="col-sm-8">
                     {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" class="img-fluid rounded" style="max-height:240px">
-                    {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
-                    {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank">{{ cell.value }}</a>
+                    {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
+                    {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank" rel="noopener noreferrer">{{ cell.value }}</a>
                     {% elif cell.kind == 'empty' %}<span class="text-muted">–</span>
                     {% else %}{{ cell.value }}{% endif %}
                 </dd>
                 {% endfor %}
             </dl>
         </div></div>
+
+        {% if gallery or can_edit %}
+        <div class="card shadow-sm mt-3"><div class="card-body">
+            <h2 class="h6 text-muted"><i class="bi bi-images"></i> {% trans "Fotos" %}
+                {% if gallery %}<span class="badge text-bg-secondary">{{ gallery|length }}</span>{% endif %}
+            </h2>
+            {% if gallery %}
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                {% for photo in gallery %}
+                <div class="position-relative">
+                    <a href="{{ photo.file.url }}" target="_blank" rel="noopener"
+                       title="{{ photo.original_name }}">
+                        <img src="{{ photo.file.url }}" alt="{{ photo.original_name }}"
+                             style="height:110px;width:110px;object-fit:cover"
+                             class="rounded border" loading="lazy">
+                    </a>
+                    {% if can_edit %}
+                    <form method="post" action="{% url 'item_photo_delete' collection.pk item.pk photo.pk %}"
+                          class="position-absolute top-0 end-0"
+                          data-confirm="{% trans 'Foto wirklich löschen?' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger py-0 px-1"
+                                title="{% trans 'Foto löschen' %}" aria-label="{% trans 'Foto löschen' %}">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% elif can_edit %}
+            <p class="text-muted small mb-2">{% trans "Füge weitere Fotos hinzu – z. B. Details, Rückseite oder Zustand." %}</p>
+            {% endif %}
+            {% if can_edit %}
+            <form method="post" action="{% url 'item_photo_add' collection.pk item.pk %}"
+                  enctype="multipart/form-data" class="d-flex gap-2">
+                {% csrf_token %}
+                <input type="file" name="photos" class="form-control form-control-sm"
+                       accept="image/*" multiple aria-label="{% trans 'Fotos auswählen' %}">
+                <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap">
+                    <i class="bi bi-plus-lg"></i> {% trans "Hinzufügen" %}
+                </button>
+            </form>
+            {% endif %}
+        </div></div>
+        {% endif %}
     </div>
     <div class="col-lg-4">
         <div class="card shadow-sm mb-3"><div class="card-body">
@@ -76,7 +140,8 @@
                        placeholder="{% trans 'An wen verleihen?' %}" maxlength="120" required>
                 <div>
                     <label class="form-label small text-muted mb-0" for="lendDueAt">{% trans "Rückgabe bis (optional)" %}</label>
-                    <input type="date" class="form-control form-control-sm" name="due_at" id="lendDueAt">
+                    <input type="date" class="form-control form-control-sm" name="due_at" id="lendDueAt"
+                           min="{{ today|date:'Y-m-d' }}">
                 </div>
                 <input type="text" class="form-control form-control-sm" name="note"
                        placeholder="{% trans 'Notiz (optional)' %}" maxlength="255">

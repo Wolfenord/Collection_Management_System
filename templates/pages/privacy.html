@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Datenschutzerklärung" %} · CMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-8">
+        <h1 class="h3 mb-4">{% trans "Datenschutzerklärung" %}</h1>
+
+        <h2 class="h5 mt-4">{% trans "1. Verantwortlicher" %}</h2>
+        {% if site_config.legal_operator or site_config.legal_email %}
+        <p>
+            {% if site_config.legal_operator %}{{ site_config.legal_operator }}{% endif %}
+            {% if site_config.legal_address %}<span class="d-block" style="white-space: pre-line">{{ site_config.legal_address }}</span>{% endif %}
+            {% if site_config.legal_email %}<span class="d-block">{% trans "E-Mail" %}: <a href="mailto:{{ site_config.legal_email }}">{{ site_config.legal_email }}</a></span>{% endif %}
+        </p>
+        {% else %}
+        <p class="text-muted">{% trans "Siehe Impressum — die Betreiberangaben dieser Installation wurden noch nicht hinterlegt." %}</p>
+        {% endif %}
+
+        <h2 class="h5 mt-4">{% trans "2. Grundsätze" %}</h2>
+        <p>{% blocktrans %}Diese Anwendung ist eine selbst gehostete Sammlungsverwaltung. Es
+        gibt keine Werbung, kein Tracking, keine Analyse-Dienste und keine Weitergabe von
+        Daten zu kommerziellen Zwecken. Alle Skripte, Schriften und Icons werden vom eigenen
+        Server geladen — beim normalen Seitenaufruf werden keine Inhalte von Drittservern
+        eingebunden.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "3. Verarbeitete Daten" %}</h2>
+        <ul>
+            <li>{% blocktrans %}<strong>Konto:</strong> Benutzername, E-Mail-Adresse, optionaler
+            Anzeigename, Passwort (ausschließlich als moderner Argon2-Hash gespeichert),
+            optionale Passkeys (nur der öffentliche Schlüssel) und persönliche
+            Einstellungen.{% endblocktrans %}</li>
+            <li>{% blocktrans %}<strong>Sammlungsdaten:</strong> die von dir angelegten Sammlungen,
+            Felder und Gegenstände samt hochgeladener Bilder und Dateien. Diese Inhalte sind
+            privat und nur für dich sowie von dir freigegebene Konten sichtbar.{% endblocktrans %}</li>
+            <li>{% blocktrans %}<strong>Ausleihen:</strong> Wenn du Ausleihen erfasst, speicherst du
+            dabei ggf. Namen dritter Personen (Entleiher). Du bist dafür verantwortlich, diese
+            Angaben sparsam zu halten und zu löschen, wenn sie nicht mehr nötig sind.{% endblocktrans %}</li>
+            <li>{% blocktrans %}<strong>Sicherheitsprotokolle:</strong> Bei fehlgeschlagenen
+            Anmeldeversuchen und ausgelösten Schutzsperren werden IP-Adresse und Benutzername
+            kurzzeitig protokolliert (Rechtsgrundlage: berechtigtes Interesse an der
+            Absicherung des Dienstes, Art. 6 Abs. 1 lit. f DSGVO).{% endblocktrans %}</li>
+        </ul>
+
+        <h2 class="h5 mt-4">{% trans "4. Cookies & lokale Speicherung" %}</h2>
+        <p>{% blocktrans %}Es werden ausschließlich technisch notwendige Cookies gesetzt:
+        Sitzungs-Cookie (Anmeldung), CSRF-Cookie (Schutz vor Anfragefälschung) und ggf. das
+        Sprachwahl-Cookie. Die Darstellung (heller/dunkler Modus, Einführungstour) wird nur
+        lokal in deinem Browser gespeichert. Einwilligungspflichtige Cookies gibt es nicht,
+        daher auch kein Cookie-Banner.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "5. E-Mails" %}</h2>
+        <p>{% blocktrans %}E-Mails werden nur funktionsbezogen versendet: Zurücksetzen des
+        Passworts, Hinweis an Administratoren bei neuen Registrierungen sowie – falls
+        aktiviert – Erinnerungen an überfällige Ausleihen.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "6. Abfragen externer Mediendatenbanken" %}</h2>
+        <p>{% blocktrans %}Zum automatischen Befüllen von Feldern kann der Server auf deine
+        aktive Aktion hin (Scan oder Suche) externe Datenbanken abfragen: Deutsche
+        Nationalbibliothek, Google Books, Open Library, MusicBrainz, TMDb, RAWG,
+        Wikidata und UPCitemdb. Übermittelt wird dabei nur der Suchbegriff bzw. der
+        gescannte Code — die Anfrage geht vom Server aus, deine IP-Adresse wird an diese
+        Dienste nicht übertragen.{% endblocktrans %}</p>
+        <p>{% blocktrans %}Ausnahme: Cover-<em>Vorschaubilder</em> lädt dein Browser direkt vom
+        jeweiligen Anbieter; dabei erhält dieser Anbieter deine IP-Adresse. Einige Anbieter
+        sitzen in Drittländern (insbesondere USA). Die Nutzung der externen Suche ist
+        freiwillig; ohne sie werden keine solchen Verbindungen aufgebaut.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "7. Preissuche (externe Links)" %}</h2>
+        <p>{% blocktrans %}Die Preissuche erzeugt ausschließlich Links auf externe
+        Kaufplattformen (z. B. eBay, idealo, Medimops). Der Server dieser Anwendung fragt
+        dabei keine Plattform an. Erst wenn du einen Link anklickst, öffnet sich die
+        jeweilige Plattform und erhält deine Suchbegriffe; ab dann gilt deren
+        Datenschutzerklärung. Die Links enthalten keine Werbe- oder Tracking-Kennungen.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "8. Speicherdauer" %}</h2>
+        <p>{% blocktrans with days=site_config.trash_retention_days %}Deine Daten bleiben
+        gespeichert, bis du sie löschst oder dein Konto entfernst. Gelöschte Gegenstände
+        liegen zunächst {{ days }} Tage im Papierkorb (wiederherstellbar) und werden danach
+        endgültig entfernt. Sicherheitsprotokolle werden nur kurzzeitig vorgehalten.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "9. Freigaben" %}</h2>
+        <p>{% blocktrans %}Gibst du eine Sammlung für andere Konten frei, sehen diese die
+        Inhalte der Sammlung sowie deinen Benutzer-/Anzeigenamen. Freigaben kannst du
+        jederzeit selbst widerrufen.{% endblocktrans %}</p>
+
+        <h2 class="h5 mt-4">{% trans "10. Deine Rechte" %}</h2>
+        <p>{% blocktrans %}Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung
+        (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18),
+        Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) sowie das Recht auf
+        Beschwerde bei einer Datenschutz-Aufsichtsbehörde.{% endblocktrans %}</p>
+        {% if user.is_authenticated %}
+        <p>
+            {% trans "Vieles davon erledigst du direkt selbst:" %}
+            <a href="{% url 'data_export' %}">{% trans "Alle meine Daten exportieren (JSON)" %}</a>
+            ·
+            <a href="{% url 'account_delete' %}">{% trans "Konto endgültig löschen" %}</a>
+        </p>
+        {% endif %}
+
+        <h2 class="h5 mt-4">{% trans "11. Sicherheit" %}</h2>
+        <p>{% blocktrans %}Der Zugriff ist durch Anmeldung, Berechtigungsprüfung auf
+        Zeilenebene, moderne Passwort-Hashes (Argon2), Schutz vor Brute-Force-Angriffen,
+        Content-Security-Policy und – im Produktivbetrieb – TLS-Verschlüsselung
+        geschützt.{% endblocktrans %}</p>
+    </div>
+</div>
+{% endblock %}

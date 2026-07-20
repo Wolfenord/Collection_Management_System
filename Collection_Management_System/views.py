@@ -11,7 +11,8 @@ import uuid
 from datetime import date
 from urllib.parse import urlencode
 
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import (FileResponse, HttpResponse, HttpResponseBadRequest, JsonResponse,
+                         QueryDict)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.urls import reverse
@@ -19,11 +20,13 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
 
-from . import codes, export, imports, labels, lookup_providers, services, statistics
+from . import (codes, export, imports, labels, lookup_providers, price_search, restore,
+               services, statistics)
 from .dynamic_forms import DynamicItemForm
 from .filters import ItemFilterForm
 from .forms import CollectionForm, FieldDefinitionForm, ItemTypeForm, ShareForm, SiteSettingsForm
-from .models import Collection, CollectionShare, FieldDefinition, FieldType, Item, ItemAsset, ItemType, Loan
+from .models import (GALLERY_KEY, Collection, CollectionShare, FieldDefinition, FieldType,
+                     Item, ItemAsset, ItemType, Loan, Notification, SavedView)
 from .rendering import item_row
 from .runtime_settings import get_setting, get_setting_for
 from .services import collections_for_user, create_default_fields
@@ -42,11 +45,17 @@ def _get_collection_for(user, pk, *, need_edit=False) -> Collection:
 
 @login_required
 def dashboard(request):
+    from django.db.models import Prefetch
     collections = list(
         collections_for_user(request.user)
         # Aggregates bypass the default manager, so exclude the trash explicitly.
         .annotate(item_count=Count('items', filter=Q(items__deleted_at__isnull=True)))
-        .prefetch_related('fields', 'items')
+        # The total-value sum only reads ``values`` — don't drag every column
+        # of every item into memory for it.
+        .prefetch_related(
+            'fields',
+            Prefetch('items', queryset=Item.objects.only('values', 'collection_id')),
+        )
     )
     owned = [c for c in collections if c.owner_id == request.user.id]
     shared = [c for c in collections if c.owner_id != request.user.id]
@@ -188,7 +197,12 @@ def collection_detail(request, pk):
     filter_form = ItemFilterForm(request.GET or None, collection=collection)
     items_qs = filter_form.apply(collection.items.select_related('item_type'))
     items_qs, sort, descending = _apply_sort(request, items_qs, fields)
-    paginator = Paginator(items_qs, get_setting_for(request.user, 'items_per_page'))
+    # Quick page-size override (?per_page=) on top of the profile/site setting.
+    try:
+        per_page = min(500, max(5, int(request.GET.get('per_page', ''))))
+    except (TypeError, ValueError):
+        per_page = get_setting_for(request.user, 'items_per_page')
+    paginator = Paginator(items_qs, per_page)
     page_obj = paginator.get_page(request.GET.get('page'))
     # Pair each cell with its field so the template can render data-labels
     # (needed for the stacked card layout of the items table on phones).
@@ -207,12 +221,16 @@ def collection_detail(request, pk):
         'page_obj': page_obj,
         'page_range': paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
         'columns': _column_headers(request, fields, sort, descending),
+        'per_page': per_page,
+        'per_page_options': (25, 50, 100),
         'filter_form': filter_form,
         'active_filters': filter_form.active_count,
         'share_url': request.build_absolute_uri(),
         'permission': permission,
         'can_edit': permission in ('owner', 'edit'),
-        'lookup_provider_label': lookup_providers.auto_provider().label,
+        'lookup_provider_label': lookup_providers.provider_for(collection).label,
+        'saved_views': collection.saved_views.all(),
+        'current_querystring': request.GET.urlencode(),
         'open_loan_count': Loan.objects.filter(item__collection=collection,
                                                returned_at__isnull=True,
                                                item__deleted_at__isnull=True).count(),
@@ -295,6 +313,9 @@ def site_settings_export(request):
     for key, value in runtime_settings.all_settings().items():
         if isinstance(value, bool):
             value = 'true' if value else 'false'
+        # Multi-line values (e.g. the imprint address) need INI continuation
+        # indentation, otherwise the file would not parse back.
+        value = str(value).replace('\n', '\n\t')
         lines.append(f'{key} = {value}')
     response = HttpResponse('\n'.join(lines) + '\n', content_type='text/plain; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="cms-settings.ini"'
@@ -335,9 +356,30 @@ def share_delete(request, pk, share_pk):
     share = get_object_or_404(CollectionShare, pk=share_pk, collection=collection)
     if request.method == 'POST':
         user = share.user
+        # The access is gone — its bell notification must not linger.
+        Notification.objects.filter(user=user, key=f'share:{share.pk}').delete()
         share.delete()
         messages.success(request, _('Freigabe für %(user)s entfernt.') % {'user': user})
     return redirect('collection_shares', pk=pk)
+
+
+# --- Notifications (bell menu) ---------------------------------------------------
+
+@login_required
+def notification_open(request, pk):
+    """Mark one notification read and jump to its target."""
+    notification = get_object_or_404(Notification, pk=pk, user=request.user)
+    if notification.read_at is None:
+        notification.read_at = timezone.now()
+        notification.save(update_fields=['read_at'])
+    return redirect(notification.url or 'dashboard')
+
+
+@login_required
+@require_POST
+def notifications_read_all(request):
+    request.user.notifications.filter(read_at__isnull=True).update(read_at=timezone.now())
+    return redirect(request.POST.get('next') or 'dashboard')
 
 
 # --- Field (column) management -------------------------------------------------
@@ -435,43 +477,59 @@ def type_create(request, pk):
 
 # --- External-database auto-fill ----------------------------------------------
 
-def _lookup_context(collection, form=None) -> dict:
-    """Context for the item form's auto-fill. Lookups always run through the
-    combined provider (every registered database is queried) — active as soon
-    as at least one field is mapped to a lookup attribute.
+def _query_key_for(collection, provider) -> tuple[str, str] | tuple[None, None]:
+    """The ``(field key, attribute)`` doubling as the scan/code input: the
+    field mapped to the provider's query attribute (ISBN for books, EAN
+    otherwise) — falling back to any other code attribute so mixed
+    collections work either way."""
+    mapped = {
+        fd.key: (fd.config or {}).get('lookup_attribute')
+        for fd in collection.fields.all() if (fd.config or {}).get('lookup_attribute')
+    }
+    for attribute in (provider.query_attribute, *lookup_providers.QUERY_ATTRIBUTES):
+        for key, mapped_attribute in mapped.items():
+            if mapped_attribute == attribute:
+                return key, attribute
+    return None, None
 
-    ``lookup_query_key`` is the field doubling as the code input (mapped to the
-    query attribute, e.g. ISBN) — optional: without it, the free-text search
-    and the per-field suggestions still work. ``lookup_suggest_fields`` maps
-    field keys to their attribute for every text field whose value makes a
-    sensible search query (title, authors, …).
+
+def _lookup_context(collection, form=None) -> dict:
+    """Context for the item form's auto-fill. Lookups run through the combined
+    provider of the collection's media kind (books → book databases, music →
+    MusicBrainz, …) — active as soon as at least one field is mapped to a
+    lookup attribute.
+
+    ``lookup_query_key`` is the field doubling as the code input (mapped to
+    ISBN/EAN) — optional: without it, the free-text search and the per-field
+    suggestions still work. ``lookup_suggest_fields`` maps field keys to their
+    attribute for every text field whose value makes a sensible search query
+    (title, authors, interpret, …).
 
     When ``form`` is given, the query field also gets a ``data-scan`` attribute
     so scanner.js offers camera scanning even if the field isn't of type ISBN.
     """
-    provider = lookup_providers.auto_provider()
+    provider = lookup_providers.provider_for(collection)
     mapped = {
         fd.key: (fd.config or {}).get('lookup_attribute')
         for fd in collection.fields.all() if (fd.config or {}).get('lookup_attribute')
     }
     if not mapped:
         return {}
-    query_key = next((key for key, attribute in mapped.items()
-                      if attribute == provider.query_attribute), None)
+    query_key, query_attribute = (_query_key_for(collection, provider)
+                                  if provider.fetch else (None, None))
     if form is not None and query_key and query_key in form.fields:
-        form.fields[query_key].widget.attrs.setdefault('data-scan', provider.query_attribute)
+        form.fields[query_key].widget.attrs.setdefault('data-scan', query_attribute)
     suggest = {key: attribute for key, attribute in mapped.items()
                if attribute in lookup_providers.SEARCHABLE_ATTRIBUTES}
     return {
         'lookup_url': reverse('item_lookup', args=[collection.pk]) if query_key else '',
-        'lookup_search_url': reverse('item_search', args=[collection.pk]),
+        'lookup_search_url': reverse('item_search', args=[collection.pk]) if provider.search else '',
         'lookup_query_key': query_key or '',
         'lookup_provider_label': provider.label,
         'lookup_suggest_fields': json.dumps(suggest),
     }
 
 
-@login_required
 def _lookup_allowed(request) -> bool:
     """Cap external-database lookups at 30/minute per user: the server makes
     outbound requests to DNB/Google/Open Library on behalf of the user, so an
@@ -486,9 +544,10 @@ def _lookup_throttled() -> JsonResponse:
                                                  'erneut.')}, status=429)
 
 
+@login_required
 def item_lookup(request, pk):
-    """AJAX: look up ``?q=`` in the collection's external database and return the
-    values for every field that is mapped to a provider attribute.
+    """AJAX: look up ``?q=`` in the collection's external databases and return
+    the values for every field that is mapped to a provider attribute.
 
     Fully dynamic: the response is keyed by *this collection's* field keys, built
     from each field's ``config['lookup_attribute']`` mapping.
@@ -496,8 +555,8 @@ def item_lookup(request, pk):
     collection = _get_collection_for(request.user, pk, need_edit=True)
     if not _lookup_allowed(request):
         return _lookup_throttled()
-    provider = lookup_providers.auto_provider()
-    if not _has_lookup_mapping(collection):
+    provider = lookup_providers.provider_for(collection)
+    if provider.fetch is None or not _has_lookup_mapping(collection):
         return JsonResponse({'ok': False, 'error': _('Kein Feld für die automatische '
                                                      'Befüllung zugeordnet.')}, status=400)
 
@@ -551,8 +610,8 @@ def item_search(request, pk):
     collection = _get_collection_for(request.user, pk, need_edit=True)
     if not _lookup_allowed(request):
         return _lookup_throttled()
-    provider = lookup_providers.auto_provider()
-    if not _has_lookup_mapping(collection):
+    provider = lookup_providers.provider_for(collection)
+    if provider.search is None or not _has_lookup_mapping(collection):
         return JsonResponse({'ok': False, 'error': _('Kein Feld für die automatische '
                                                      'Befüllung zugeordnet.')}, status=400)
     query = (request.GET.get('q') or '').strip()
@@ -560,11 +619,13 @@ def item_search(request, pk):
         return JsonResponse({'ok': False, 'error': _('Kein Suchbegriff übergeben.')}, status=400)
 
     results = []
-    for data in provider.search(query)[:8]:
+    for data in provider.search(query)[:10]:
         fields, covers = _map_lookup_data(collection, data)
         if not fields and not covers:
             continue
-        label = ' · '.join(str(data[key]) for key in ('title', 'authors', 'year') if data.get(key))
+        label = ' · '.join(str(data[key]) for key
+                           in ('title', 'authors', 'artist', 'platform', 'year')
+                           if data.get(key))
         results.append({'label': label, 'cover': data.get('cover_url') or '',
                         'fields': fields, 'covers': covers})
     return JsonResponse({'ok': True, 'provider': provider.label, 'results': results})
@@ -572,13 +633,9 @@ def item_search(request, pk):
 
 def _find_duplicate(collection, provider, query, exclude=None):
     """Warn before a second copy is created: does an item of this collection
-    already carry the scanned code in the field mapped to the query attribute?
+    already carry the scanned code in the field mapped to ISBN/EAN?
     """
-    query_key = next(
-        (fd.key for fd in collection.fields.all()
-         if (fd.config or {}).get('lookup_attribute') == provider.query_attribute),
-        None,
-    )
+    query_key, _attribute = _query_key_for(collection, provider)
     if not query_key:
         return None
     normalised = lookup_providers._digits(query) or query
@@ -592,6 +649,108 @@ def _find_duplicate(collection, provider, query, exclude=None):
                 'name': (values or {}).get('name') or str(item_id)[:8],
             }
     return None
+
+
+# --- Saved views (named filter/sort states) --------------------------------------
+
+_SAVED_VIEW_DROP_PARAMS = ('page',)
+
+
+@login_required
+@require_POST
+def saved_view_create(request, pk):
+    """Save the current filter/sort querystring under a name."""
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    name = (request.POST.get('name') or '').strip()[:120]
+    raw = (request.POST.get('querystring') or '')[:2000]
+    params = QueryDict(raw, mutable=True)
+    for param in _SAVED_VIEW_DROP_PARAMS:
+        params.pop(param, None)
+    if not name:
+        messages.error(request, _('Bitte einen Namen für die Ansicht angeben.'))
+    else:
+        _view, created = SavedView.objects.update_or_create(
+            collection=collection, name=name,
+            defaults={'querystring': params.urlencode(), 'created_by': request.user},
+        )
+        messages.success(request, _('Ansicht „%(name)s“ gespeichert.') % {'name': name}
+                         if created else
+                         _('Ansicht „%(name)s“ aktualisiert.') % {'name': name})
+    target = reverse('collection_detail', args=[collection.pk])
+    return redirect(f'{target}?{params.urlencode()}' if params else target)
+
+
+@login_required
+@require_POST
+def saved_view_delete(request, pk, view_pk):
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    view = get_object_or_404(SavedView, pk=view_pk, collection=collection)
+    name = view.name
+    view.delete()
+    messages.success(request, _('Ansicht „%(name)s“ gelöscht.') % {'name': name})
+    return redirect('collection_detail', pk=collection.pk)
+
+
+# --- Per-item photo gallery ------------------------------------------------------
+
+_GALLERY_MAX_PHOTOS = 20
+
+
+@login_required
+@require_POST
+def item_photo_add(request, pk, item_pk):
+    """Attach additional photos to an item (next to the regular image field)."""
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    item = get_object_or_404(Item, pk=item_pk, collection=collection)
+    uploads = request.FILES.getlist('photos')
+    existing = item.assets.filter(field_key=GALLERY_KEY).count()
+
+    from django import forms as django_forms
+    from .runtime_settings import allowed_upload_extensions, get_setting
+    max_mb = get_setting('upload_max_mb')
+    allowed = allowed_upload_extensions()
+
+    added = 0
+    for upload in uploads:
+        if existing + added >= _GALLERY_MAX_PHOTOS:
+            messages.warning(request, _('Maximal %(count)s Fotos pro Gegenstand.')
+                             % {'count': _GALLERY_MAX_PHOTOS})
+            break
+        name = upload.name or ''
+        extension = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+        if upload.size > max_mb * 1024 * 1024:
+            messages.error(request, _('„%(name)s“ ist zu groß (maximal %(mb)s MB).')
+                           % {'name': name, 'mb': max_mb})
+            continue
+        if allowed and extension not in allowed:
+            messages.error(request, _('Dateityp „%(ext)s“ ist nicht erlaubt.')
+                           % {'ext': extension or '?'})
+            continue
+        try:  # real image check (same validation the image form field uses)
+            django_forms.ImageField().clean(upload)
+        except django_forms.ValidationError:
+            messages.error(request, _('„%(name)s“ ist kein gültiges Bild.') % {'name': name})
+            continue
+        ItemAsset.objects.create(item=item, field_key=GALLERY_KEY,
+                                 file=upload, original_name=name[:255])
+        added += 1
+    if added:
+        messages.success(request, _('%(count)s Foto(s) hinzugefügt.') % {'count': added})
+    elif not uploads:
+        messages.error(request, _('Keine Dateien ausgewählt.'))
+    return redirect('item_detail', pk=collection.pk, item_pk=item.pk)
+
+
+@login_required
+@require_POST
+def item_photo_delete(request, pk, item_pk, asset_pk):
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    item = get_object_or_404(Item, pk=item_pk, collection=collection)
+    asset = get_object_or_404(ItemAsset, pk=asset_pk, item=item, field_key=GALLERY_KEY)
+    asset.file.delete(save=False)
+    asset.delete()
+    messages.success(request, _('Foto entfernt.'))
+    return redirect('item_detail', pk=collection.pk, item_pk=item.pk)
 
 
 # --- Item CRUD (dynamic forms) -------------------------------------------------
@@ -761,11 +920,21 @@ def item_detail(request, pk, item_pk):
     fields = list(collection.fields.all())
     pairs = list(zip(fields, item_row(item, fields)))
     permission = collection.user_permission(request.user)
+    # Leaf through the collection in list order (newest first): "previous" is
+    # the next-newer item, "next" the next-older one.
+    newer = (collection.items.filter(created_at__gt=item.created_at)
+             .order_by('created_at').first())
+    older = (collection.items.filter(created_at__lt=item.created_at)
+             .order_by('-created_at').first())
     return render(request, 'collections/item_detail.html', {
         'collection': collection, 'item': item, 'pairs': pairs,
         'can_edit': permission in ('owner', 'edit'),
         'loan': item.active_loan,
         'past_loans': item.loans.filter(returned_at__isnull=False)[:10],
+        'newer_item': newer,
+        'older_item': older,
+        'today': timezone.localdate(),
+        'gallery': item.assets.filter(field_key=GALLERY_KEY).order_by('uploaded_at'),
     })
 
 
@@ -830,9 +999,12 @@ def item_duplicate(request, pk, item_pk):
             file=ContentFile(content, name=os.path.basename(asset.file.name)),
             original_name=asset.original_name,
         )
-        copy.values[asset.field_key] = {'asset_id': str(new_asset.id),
-                                        'name': new_asset.original_name,
-                                        'url': new_asset.file.url}
+        # Gallery photos have no field/value entry — only real file fields
+        # store an asset reference in the JSON values.
+        if asset.field_key != GALLERY_KEY:
+            copy.values[asset.field_key] = {'asset_id': str(new_asset.id),
+                                            'name': new_asset.original_name,
+                                            'url': new_asset.file.url}
         copied_assets = True
     if copied_assets:
         copy.save(update_fields=['values', 'updated_at'])
@@ -920,6 +1092,34 @@ def trash_empty(request, pk):
     return redirect('collection_trash', pk=collection.pk)
 
 
+# --- Price comparison (link-out search on external platforms) -------------------
+
+@login_required
+def price_search_page(request):
+    """Multi-platform shopping/price search: builds pre-filled deep links into
+    price-comparison engines, second-hand marketplaces and shops.
+
+    Everything happens client-side by clicking a link — the server contacts no
+    platform (see price_search.py for the rationale)."""
+    form = price_search.PriceSearchForm(request.GET or None)
+    query = form.to_query()
+    return render(request, 'collections/price_search.html', {
+        'form': form,
+        'query': query,
+        'links': price_search.build_links(query),
+    })
+
+
+@login_required
+def item_price_search(request, pk, item_pk):
+    """Open the price search pre-filled with an item's code/title/creator."""
+    collection = _get_collection_for(request.user, pk)  # viewing suffices
+    item = get_object_or_404(Item, pk=item_pk, collection=collection)
+    query = price_search.query_for_item(collection, item)
+    params = {'q': query.q, 'code': query.code, 'kind': query.kind}
+    return redirect(reverse('price_search') + '?' + urlencode({k: v for k, v in params.items() if v}))
+
+
 # --- Statistics ----------------------------------------------------------------
 
 @login_required
@@ -958,6 +1158,60 @@ def collection_export(request, pk):
         data, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# --- Full backup (ZIP: Excel + JSON + media) -------------------------------------
+
+@login_required
+def collection_backup(request, pk):
+    """Download a complete backup of the collection as one ZIP file:
+    the Excel table, a machine-readable JSON dump (incl. trash) and every
+    uploaded image/file. Independent of active filters."""
+    collection = _get_collection_for(request.user, pk)
+    from accounts.throttling import allow
+    if not allow('backup', str(request.user.pk), max_requests=10, window_seconds=3600):
+        return HttpResponse(_('Zu viele Sicherungs-Anfragen. Bitte versuche es später erneut.'),
+                            status=429, content_type='text/plain; charset=utf-8')
+    buffer = export.build_backup_zip(collection, request.build_absolute_uri)
+    filename = (f"sicherung-{slugify(collection.name) or 'sammlung'}-"
+                f"{timezone.localdate().isoformat()}.zip")
+    return FileResponse(buffer, as_attachment=True, filename=filename,
+                        content_type='application/zip')
+
+
+# --- Restore from backup ZIP -----------------------------------------------------
+
+@login_required
+def collection_restore(request):
+    """Recreate a collection from a backup ZIP (see collection_backup) as a
+    NEW collection owned by the current user — structure, contents, files,
+    loan history and saved views; shares are deliberately not restored."""
+    if request.method == 'POST':
+        from accounts.throttling import allow
+        if not allow('restore', str(request.user.pk), max_requests=5, window_seconds=3600):
+            return HttpResponse(_('Zu viele Wiederherstellungen. Bitte versuche es später erneut.'),
+                                status=429, content_type='text/plain; charset=utf-8')
+        upload = request.FILES.get('file')
+        if not upload or not upload.name.lower().endswith('.zip'):
+            messages.error(request, _('Bitte eine .zip-Sicherungsdatei auswählen.'))
+        elif upload.size > restore.MAX_TOTAL_BYTES:
+            messages.error(request, _('Die Datei ist zu groß.'))
+        else:
+            try:
+                collection, stats = restore.restore_backup(upload, request.user)
+            except restore.RestoreError as exc:
+                messages.error(request, str(exc))
+            else:
+                for warning in stats['warnings'][:10]:
+                    messages.warning(request, warning)
+                messages.success(
+                    request,
+                    _('Sammlung „%(name)s“ wiederhergestellt: %(items)s Gegenstände, '
+                      '%(files)s Dateien.')
+                    % {'name': collection.name, 'items': stats['items'],
+                       'files': stats['files']})
+                return redirect('collection_detail', pk=collection.pk)
+    return render(request, 'collections/restore.html')
 
 
 # --- Printable label sheet -----------------------------------------------------

@@ -34,7 +34,13 @@ def render_cell(field, raw) -> Cell:
         except (TypeError, ValueError):
             return Cell('text', f'{raw} {currency}')
     if t == FieldType.URL:
-        return Cell('url', str(raw), str(raw))
+        # Only genuine web URLs become links. Anything else (e.g. a
+        # ``javascript:`` scheme smuggled in via file import) renders as plain
+        # text — defence in depth on top of the form/import validation.
+        text = str(raw)
+        if text.lower().startswith(('http://', 'https://')):
+            return Cell('url', text, text)
+        return Cell('text', text)
     if t == FieldType.MULTICHOICE and isinstance(raw, list):
         return Cell('text', ', '.join(str(v) for v in raw))
     return Cell('text', str(raw))

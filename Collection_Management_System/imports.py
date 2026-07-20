@@ -91,7 +91,17 @@ def parse_value(fd, raw):
         if parts and not matched:
             raise ValueError(str(raw))
         return matched
-    # text/textarea/isbn/barcode/url/email/datetime: store the trimmed string.
+    if t == FieldType.URL:
+        # Mirror the form field's behaviour: accept http(s), add a scheme to
+        # bare domains, refuse anything else (javascript:, data:, …).
+        text = str(raw).strip()
+        lowered = text.lower()
+        if lowered.startswith(('http://', 'https://')):
+            return text
+        if '://' in text or lowered.startswith(('javascript:', 'data:', 'vbscript:')):
+            raise ValueError(text)
+        return 'https://' + text
+    # text/textarea/isbn/barcode/email/datetime: store the trimmed string.
     return str(raw).strip()
 
 

@@ -2222,3 +2222,942 @@ class LookupThrottleTests(TestCase):
                 self.client.get(lookup_url, {'q': '123'})
             resp = self.client.get(search_url, {'q': 'hawking'})
         self.assertEqual(resp.status_code, 429)
+
+
+# --- Media providers beyond books (music, movies, games, board games, EAN) -----
+
+MUSICBRAINZ_PAYLOAD = {'releases': [{
+    'id': 'mbid-123',
+    'title': 'Nevermind',
+    'artist-credit': [{'name': 'Nirvana', 'joinphrase': ''}],
+    'date': '1991-09-24',
+    'barcode': '0720642442524',
+    'label-info': [{'label': {'name': 'DGC'}}],
+    'media': [{'format': 'CD', 'track-count': 12}],
+}]}
+
+TMDB_PAYLOAD = {'results': [
+    {'media_type': 'movie', 'title': 'Inception', 'release_date': '2010-07-15',
+     'overview': 'Ein Dieb stiehlt Geheimnisse aus Träumen.',
+     'poster_path': '/abc.jpg', 'genre_ids': [28, 878], 'original_language': 'en'},
+    {'media_type': 'person', 'name': 'Christopher Nolan'},
+]}
+
+RAWG_PAYLOAD = {'results': [
+    {'name': 'The Legend of Zelda: Breath of the Wild', 'released': '2017-03-03',
+     'background_image': 'https://media.rawg.io/media/zelda.jpg',
+     'platforms': [{'platform': {'name': 'Nintendo Switch'}}, {'platform': {'name': 'Wii U'}}],
+     'genres': [{'name': 'Adventure'}, {'name': 'Action'}]},
+]}
+
+WIKIDATA_SEARCH_PAYLOAD = {'search': [
+    {'id': 'Q1903', 'label': 'Catania', 'description': 'Stadt in Sizilien'},
+    {'id': 'Q17271', 'label': 'Die Siedler von Catan', 'description': 'Brettspiel'},
+]}
+
+WIKIDATA_ENTITIES_PAYLOAD = {'entities': {
+    'Q1903': {  # the Sicilian city — must be filtered out via P31
+        'labels': {'de': {'value': 'Catania'}},
+        'claims': {'P31': [{'mainsnak': {'datavalue': {'value': {'id': 'Q515'}}}}]},
+    },
+    'Q17271': {
+        'labels': {'de': {'value': 'Die Siedler von Catan'}},
+        'descriptions': {'de': {'value': 'Brettspiel'}},
+        'claims': {
+            'P31': [{'mainsnak': {'datavalue': {'value': {'id': 'Q131436'}}}}],
+            'P577': [{'mainsnak': {'datavalue': {'value': {'time': '+1995-00-00T00:00:00Z'}}}}],
+            'P1872': [{'mainsnak': {'datavalue': {'value': {'amount': '+3'}}}}],
+            'P1873': [{'mainsnak': {'datavalue': {'value': {'amount': '+4'}}}}],
+            'P18': [{'mainsnak': {'datavalue': {'value': 'Catan Brettspiel.jpg'}}}],
+        },
+    },
+}}
+
+UPC_PAYLOAD = {'code': 'OK', 'items': [{
+    'ean': '0885909950805', 'title': 'Apple iPhone', 'brand': 'Apple',
+    'category': 'Electronics > Communications', 'description': 'x' * 700,
+    'images': ['https://some-shop.example/iphone.jpg'],
+}]}
+
+
+class MediaProviderTests(TestCase):
+    def _set_key(self, key, value):
+        from .runtime_settings import _CACHE_KEY, set_setting
+        set_setting(key, value)
+        self.addCleanup(cache.delete, _CACHE_KEY)
+
+    def test_musicbrainz_fetch_parses_release_and_cover(self):
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               return_value=MUSICBRAINZ_PAYLOAD) as m:
+            data = lookup_providers.get_provider('musicbrainz').fetch('0-720642-442524')
+        self.assertIn('barcode%3A0720642442524', m.call_args[0][0])
+        self.assertEqual(data['title'], 'Nevermind')
+        self.assertEqual(data['artist'], 'Nirvana')
+        self.assertEqual(data['authors'], 'Nirvana')
+        self.assertEqual(data['publisher'], 'DGC')
+        self.assertEqual(data['year'], '1991')
+        self.assertEqual(data['format'], 'CD')
+        self.assertEqual(data['ean'], '0720642442524')
+        self.assertEqual(data['cover_url'],
+                         'https://coverartarchive.org/release/mbid-123/front-250')
+
+    def test_musicbrainz_search_escapes_lucene_specials(self):
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               return_value=MUSICBRAINZ_PAYLOAD) as m:
+            results = lookup_providers.get_provider('musicbrainz').search('nirvana: nevermind!')
+        self.assertNotIn('%3A', m.call_args[0][0].split('query=')[1].split('&')[0])
+        self.assertEqual(results[0]['title'], 'Nevermind')
+
+    def test_tmdb_requires_api_key(self):
+        provider = lookup_providers.get_provider('tmdb')
+        self.assertFalse(provider.is_available())
+        self.assertEqual(provider.search('inception'), [])
+
+    def test_tmdb_search_with_key_parses_movies_only(self):
+        self._set_key('tmdb_api_key', 'k123')
+        provider = lookup_providers.get_provider('tmdb')
+        self.assertTrue(provider.is_available())
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               return_value=TMDB_PAYLOAD) as m:
+            results = provider.search('inception')
+        self.assertIn('api_key=k123', m.call_args[0][0])
+        self.assertEqual(len(results), 1)  # the person entry is dropped
+        self.assertEqual(results[0]['title'], 'Inception')
+        self.assertEqual(results[0]['year'], '2010')
+        self.assertEqual(results[0]['categories'], 'Action, Science Fiction')
+        self.assertEqual(results[0]['language'], 'Englisch')
+        self.assertEqual(results[0]['cover_url'], 'https://image.tmdb.org/t/p/w342/abc.jpg')
+
+    def test_rawg_search_with_key_parses_games(self):
+        self._set_key('rawg_api_key', 'r123')
+        with mock.patch.object(lookup_providers, '_http_get_json', return_value=RAWG_PAYLOAD):
+            results = lookup_providers.get_provider('rawg').search('zelda')
+        self.assertEqual(results[0]['title'], 'The Legend of Zelda: Breath of the Wild')
+        self.assertEqual(results[0]['platform'], 'Nintendo Switch, Wii U')
+        self.assertEqual(results[0]['categories'], 'Adventure, Action')
+        self.assertEqual(results[0]['cover_url'], 'https://media.rawg.io/media/zelda.jpg')
+
+    def test_wikidata_search_filters_to_games_and_parses_claims(self):
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               side_effect=[WIKIDATA_SEARCH_PAYLOAD,
+                                            WIKIDATA_ENTITIES_PAYLOAD]) as m:
+            results = lookup_providers.get_provider('wikidata').search('catan')
+        self.assertEqual(m.call_count, 2)
+        self.assertIn('Q1903%7CQ17271', m.call_args[0][0])  # one batched claims call
+        self.assertEqual(len(results), 1)  # the city is filtered out via P31
+        game = results[0]
+        self.assertEqual(game['title'], 'Die Siedler von Catan')
+        self.assertEqual(game['year'], '1995')
+        self.assertEqual(game['players'], '3–4')
+        self.assertEqual(game['description'], 'Brettspiel')
+        self.assertEqual(game['cover_url'],
+                         'https://commons.wikimedia.org/wiki/Special:FilePath/'
+                         'Catan%20Brettspiel.jpg?width=400')
+
+    def test_upcitemdb_lookup_never_emits_untrusted_cover(self):
+        with mock.patch.object(lookup_providers, '_http_get_json', return_value=UPC_PAYLOAD):
+            data = lookup_providers.get_provider('upcitemdb').fetch('0885909950805')
+        self.assertEqual(data['title'], 'Apple iPhone')
+        self.assertEqual(data['brand'], 'Apple')
+        self.assertEqual(len(data['description']), 600)
+        self.assertNotIn('cover_url', data)  # merchant image hosts are untrusted
+
+    def test_chain_for_music_and_availability_gating(self):
+        keys = [p.key for p in lookup_providers.chain_for('music')]
+        self.assertEqual(keys, ['musicbrainz', 'upcitemdb'])
+        keys_all = [p.key for p in lookup_providers.chain_for('')]
+        self.assertNotIn('tmdb', keys_all)  # no API key configured
+        self._set_key('tmdb_api_key', 'k123')
+        keys_all = [p.key for p in lookup_providers.chain_for('')]
+        self.assertIn('tmdb', keys_all)
+
+    def test_provider_for_uses_collection_media_kind(self):
+        owner = User.objects.create_user('kindowner', 'k@e.de', 'pw')
+        coll = Collection.objects.create(owner=owner, name='Platten', lookup_provider='music')
+        provider = lookup_providers.provider_for(coll)
+        self.assertIn('MusicBrainz', provider.label)
+        self.assertNotIn('DNB', provider.label)
+        self.assertEqual(provider.query_attribute, 'ean')
+
+    def test_ean_fetch_prefers_product_sources_over_book_sources(self):
+        calls = []
+
+        def fake_json(url):
+            calls.append(url)
+            if 'musicbrainz' in url:
+                return MUSICBRAINZ_PAYLOAD
+            return {}
+
+        with mock.patch.object(lookup_providers, '_http_get_json', side_effect=fake_json), \
+                mock.patch.object(lookup_providers, '_http_get_text', return_value=None):
+            data = lookup_providers.auto_provider().fetch('0720642442524')
+        self.assertEqual(data['title'], 'Nevermind')
+        self.assertIn('musicbrainz', calls[0])  # non-ISBN code: product/music sources first
+
+    def test_cover_hosts_cover_new_providers(self):
+        for url in ('https://coverartarchive.org/release/x/front-250',
+                    'https://ia800505.us.archive.org/x.jpg',
+                    'https://image.tmdb.org/t/p/w342/abc.jpg',
+                    'https://media.rawg.io/media/zelda.jpg',
+                    'https://commons.wikimedia.org/wiki/Special:FilePath/x.jpg',
+                    'https://upload.wikimedia.org/wikipedia/commons/x.jpg'):
+            self.assertTrue(lookup_providers.cover_url_allowed(url), url)
+        self.assertFalse(lookup_providers.cover_url_allowed('https://some-shop.example/i.jpg'))
+        self.assertFalse(lookup_providers.cover_url_allowed('https://evilarchive.org/x'))
+
+    def test_lookup_view_requires_login(self):
+        owner = User.objects.create_user('lockowner', 'l@e.de', 'pw')
+        coll = Collection.objects.create(owner=owner, name='L')
+        resp = self.client.get(reverse('item_lookup', args=[coll.pk]), {'q': '1'})
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/accounts/login/', resp['Location'])
+
+
+class MediaKindTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('mkowner', 'mk@e.de', 'pw')
+        self.client.force_login(self.owner)
+
+    def test_presets_store_their_media_kind(self):
+        from .services import PRESETS
+        for preset, expected in (('books', 'books'), ('movies', 'movies'),
+                                 ('music', 'music'), ('games', 'games'),
+                                 ('boardgames', 'boardgames'), ('generic', '')):
+            name = 'Kind %s' % preset
+            self.client.post(reverse('collection_create'),
+                             {'name': name, 'description': '', 'preset': preset})
+            coll = Collection.objects.get(name=name)
+            self.assertEqual(coll.lookup_provider, expected, preset)
+            self.assertIn(preset, PRESETS)
+
+    def test_movie_preset_maps_lookup_attributes(self):
+        self.client.post(reverse('collection_create'),
+                         {'name': 'Filme', 'description': '', 'preset': 'movies'})
+        coll = Collection.objects.get(name='Filme')
+        self.assertEqual(coll.fields.get(key='regie').config.get('lookup_attribute'), 'director')
+        self.assertEqual(coll.fields.get(key='ean').config.get('lookup_attribute'), 'ean')
+        self.assertEqual(coll.fields.get(key='bild').config.get('lookup_attribute'), 'cover_url')
+
+    def test_edit_form_changes_media_kind(self):
+        coll = Collection.objects.create(owner=self.owner, name='Regal')
+        resp = self.client.post(reverse('collection_edit', args=[coll.pk]),
+                                {'name': 'Regal', 'description': '', 'lookup_provider': 'music'})
+        self.assertEqual(resp.status_code, 302)
+        coll.refresh_from_db()
+        self.assertEqual(coll.lookup_provider, 'music')
+
+    def test_copy_structure_copies_media_kind(self):
+        from .services import copy_structure
+        source = Collection.objects.create(owner=self.owner, name='Q', lookup_provider='games')
+        target = Collection.objects.create(owner=self.owner, name='Z')
+        copy_structure(source, target)
+        target.refresh_from_db()
+        self.assertEqual(target.lookup_provider, 'games')
+
+
+# --- Price comparison / multi-platform search ----------------------------------
+
+class PriceSearchBuildTests(TestCase):
+    def _links(self, **kwargs):
+        from . import price_search
+        return {entry['platform'].key: entry
+                for entry in price_search.build_links(price_search.PriceQuery(**kwargs))}
+
+    def test_book_isbn_builds_precise_links(self):
+        links = self._links(q='Der Hobbit Tolkien', code='978-3-608-93981-1', kind='books')
+        self.assertIn('eurobuch', links)
+        self.assertIn('/buch/isbn/9783608939811.html', links['eurobuch']['url'])
+        self.assertIn('isbn=9783608939811', links['booklooker']['url'])
+        self.assertIn('_nkw=9783608939811', links['ebay']['url'])
+        self.assertIn('i=stripbooks', links['amazon']['url'])
+        self.assertTrue(links['idealo']['precise'])
+        self.assertNotIn('discogs', links)  # music only
+
+    def test_condition_and_price_filters(self):
+        from decimal import Decimal
+        links = self._links(q='Der Hobbit', kind='books', condition='new',
+                            min_price=Decimal('5'), max_price=Decimal('20'), sort='price')
+        self.assertNotIn('medimops', links)   # used-only platform filtered out
+        self.assertNotIn('booklooker', links)
+        self.assertIn('thalia', links)
+        ebay = links['ebay']['url']
+        self.assertIn('LH_ItemCondition=1000', ebay)
+        self.assertIn('_udlo=5', ebay)
+        self.assertIn('_udhi=20', ebay)
+        self.assertIn('_sop=15', ebay)
+        used = self._links(q='Der Hobbit', kind='books', condition='used')
+        self.assertIn('medimops', used)
+        self.assertNotIn('thalia', used)
+
+    def test_music_ean_uses_discogs_barcode_search(self):
+        links = self._links(code='0720642442524', kind='music')
+        self.assertIn('barcode=0720642442524', links['discogs']['url'])
+        self.assertIn('medimops', links)
+        self.assertNotIn('booklooker', links)
+
+    def test_no_query_returns_nothing(self):
+        from . import price_search
+        self.assertEqual(price_search.build_links(price_search.PriceQuery()), [])
+
+    def test_eurobuch_needs_isbn(self):
+        links = self._links(q='irgendwas', kind='books')
+        self.assertNotIn('eurobuch', links)
+
+
+class PriceSearchViewTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('priceowner', 'p@e.de', 'pw')
+        self.other = User.objects.create_user('priceother', 'po@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Bücher',
+                                              lookup_provider='books')
+        add_field(self.coll, 'titel', 'Titel', FieldType.TEXT, 0,
+                  config={'lookup_attribute': 'title'})
+        add_field(self.coll, 'autor', 'Autor', FieldType.TEXT, 1,
+                  config={'lookup_attribute': 'authors'})
+        add_field(self.coll, 'isbn', 'ISBN', FieldType.ISBN, 2,
+                  config={'lookup_attribute': 'isbn'})
+        self.item = Item.objects.create(collection=self.coll, values={
+            'titel': 'Der Hobbit', 'autor': 'J.R.R. Tolkien', 'isbn': '978-3-608-93981-1'})
+
+    def test_page_requires_login(self):
+        self.client.logout()
+        resp = self.client.get(reverse('price_search'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/accounts/login/', resp['Location'])
+
+    def test_page_renders_grouped_platform_links(self):
+        resp = self.client.get(reverse('price_search'),
+                               {'q': 'Der Hobbit', 'code': '9783608939811', 'kind': 'books'})
+        self.assertContains(resp, 'eurobuch.com')
+        self.assertContains(resp, 'rel="noopener noreferrer nofollow"')
+        self.assertContains(resp, 'Preisvergleich &amp; Metasuche')
+        self.assertContains(resp, 'Gebraucht kaufen')
+
+    def test_item_button_prefills_from_item(self):
+        resp = self.client.get(reverse('item_price_search', args=[self.coll.pk, self.item.pk]))
+        self.assertEqual(resp.status_code, 302)
+        location = resp['Location']
+        self.assertIn('code=978-3-608-93981-1', location.replace('%2D', '-'))
+        self.assertIn('kind=books', location)
+        follow = self.client.get(location)
+        self.assertContains(follow, 'eurobuch.com')
+        self.assertContains(follow, 'Der+Hobbit+J.R.R.+Tolkien')
+
+    def test_item_price_search_respects_row_level_permission(self):
+        self.client.force_login(self.other)
+        resp = self.client.get(reverse('item_price_search', args=[self.coll.pk, self.item.pk]))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_item_detail_links_to_price_search(self):
+        resp = self.client.get(reverse('item_detail', args=[self.coll.pk, self.item.pk]))
+        self.assertContains(resp, reverse('item_price_search', args=[self.coll.pk, self.item.pk]))
+
+
+# --- GDPR: legal pages, data export, account deletion ---------------------------
+
+class LegalPagesTests(TestCase):
+    def test_privacy_and_imprint_are_public(self):
+        for name in ('privacy', 'imprint'):
+            resp = self.client.get(reverse(name))
+            self.assertEqual(resp.status_code, 200, name)
+        self.assertContains(self.client.get(reverse('privacy')), 'Datenschutzerklärung')
+        self.assertContains(self.client.get(reverse('imprint')), 'Impressum')
+
+    def test_operator_details_come_from_settings(self):
+        from .runtime_settings import _CACHE_KEY, set_setting
+        set_setting('legal_operator', 'Max Mustermann')
+        set_setting('legal_address', 'Musterweg 1\n12345 Musterstadt')
+        set_setting('legal_email', 'max@example.org')
+        self.addCleanup(cache.delete, _CACHE_KEY)
+        resp = self.client.get(reverse('imprint'))
+        self.assertContains(resp, 'Max Mustermann')
+        self.assertContains(resp, 'Musterweg 1')
+        self.assertContains(resp, 'max@example.org')
+
+    def test_legal_pages_reachable_in_maintenance_mode(self):
+        from .runtime_settings import _CACHE_KEY, set_setting
+        set_setting('maintenance_mode', True)
+        self.addCleanup(cache.delete, _CACHE_KEY)
+        self.assertEqual(self.client.get(reverse('privacy')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('imprint')).status_code, 200)
+
+    def test_footer_links_present(self):
+        user = User.objects.create_user('legaluser', 'lg@e.de', 'pw')
+        self.client.force_login(user)
+        resp = self.client.get(reverse('dashboard'))
+        self.assertContains(resp, reverse('privacy'))
+        self.assertContains(resp, reverse('imprint'))
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class DataExportTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('exporter', 'ex@e.de', 'pw',
+                                             display_name='Exporteur')
+        self.client.force_login(self.user)
+        self.coll = Collection.objects.create(owner=self.user, name='Meine Bücher')
+        add_field(self.coll, 'titel', 'Titel', FieldType.TEXT)
+        self.item = Item.objects.create(collection=self.coll, values={'titel': 'Der Hobbit'})
+        Loan.objects.create(item=self.item, borrower='Anna')
+
+    def test_export_contains_account_and_collection_data(self):
+        resp = self.client.get(reverse('data_export'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('attachment', resp['Content-Disposition'])
+        data = json.loads(resp.content)
+        self.assertEqual(data['account']['username'], 'exporter')
+        self.assertEqual(data['account']['display_name'], 'Exporteur')
+        collection = data['collections'][0]
+        self.assertEqual(collection['name'], 'Meine Bücher')
+        self.assertEqual(collection['items'][0]['values']['titel'], 'Der Hobbit')
+        self.assertEqual(collection['items'][0]['loans'][0]['borrower'], 'Anna')
+
+    def test_export_requires_login(self):
+        self.client.logout()
+        resp = self.client.get(reverse('data_export'))
+        self.assertEqual(resp.status_code, 302)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class AccountDeleteTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user('deleteme', 'del@e.de', 'pw')
+        self.client.force_login(self.user)
+        self.coll = Collection.objects.create(owner=self.user, name='Weg damit')
+        add_field(self.coll, 'bild', 'Bild', FieldType.IMAGE)
+
+    def _upload_item(self):
+        resp = self.client.post(
+            reverse('item_create', args=[self.coll.pk]),
+            {'bild': SimpleUploadedFile('foto.png', make_png(), 'image/png')})
+        self.assertEqual(resp.status_code, 302)
+        return self.coll.items.first().assets.first()
+
+    def test_confirmation_page_shows_counts(self):
+        Item.objects.create(collection=self.coll, values={})
+        resp = self.client.get(reverse('account_delete'))
+        self.assertContains(resp, 'Konto endgültig löschen')
+        self.assertContains(resp, '1 Sammlung')
+        self.assertContains(resp, '1 Gegenstand')
+
+    def test_wrong_password_keeps_account(self):
+        self.client.post(reverse('account_delete'), {'password': 'falsch'})
+        self.assertTrue(User.objects.filter(username='deleteme').exists())
+
+    def test_delete_removes_account_collections_and_files(self):
+        import os
+        asset = self._upload_item()
+        path = asset.file.path
+        self.assertTrue(os.path.exists(path))
+        resp = self.client.post(reverse('account_delete'), {'password': 'pw'})
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('login'), resp['Location'])
+        self.assertFalse(User.objects.filter(username='deleteme').exists())
+        self.assertFalse(Collection.objects.filter(name='Weg damit').exists())
+        self.assertFalse(os.path.exists(path))
+
+    def test_sole_superuser_cannot_self_delete(self):
+        admin = User.objects.create_superuser('lonelyadmin', 'a@e.de', 'pw')
+        self.client.force_login(admin)
+        resp = self.client.get(reverse('account_delete'))
+        self.assertContains(resp, 'einzige aktive Administrator')
+        self.client.post(reverse('account_delete'), {'password': 'pw'})
+        self.assertTrue(User.objects.filter(username='lonelyadmin').exists())
+
+    def test_items_created_in_foreign_collections_are_anonymised(self):
+        other = User.objects.create_user('keeper', 'k@e.de', 'pw')
+        their = Collection.objects.create(owner=other, name='Bleibt')
+        foreign_item = Item.objects.create(collection=their, values={}, created_by=self.user)
+        self.client.post(reverse('account_delete'), {'password': 'pw'})
+        foreign_item.refresh_from_db()
+        self.assertIsNone(foreign_item.created_by)
+
+
+class UrlValueHardeningTests(TestCase):
+    """URL-typed values: only real web URLs become links (import + rendering)."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user('urlowner', 'u@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Links')
+        self.fd = add_field(self.coll, 'link', 'Link', FieldType.URL)
+
+    def test_render_cell_refuses_non_web_schemes(self):
+        from .rendering import render_cell
+        self.assertEqual(render_cell(self.fd, 'https://example.org/x').kind, 'url')
+        for bad in ('javascript:alert(1)', 'data:text/html,x', 'ftp://example.org'):
+            cell = render_cell(self.fd, bad)
+            self.assertEqual(cell.kind, 'text', bad)
+            self.assertEqual(cell.url, '')
+
+    def test_import_validates_url_scheme(self):
+        result = imports.import_table(self.coll, [
+            ['Link'],
+            ['https://example.org/a'],
+            ['www.example.org/b'],           # bare domain: scheme added
+            ['javascript:alert(1)'],         # refused with a row warning
+        ], user=self.owner)
+        values = sorted(item.values.get('link', '') for item in self.coll.items.all())
+        self.assertIn('https://example.org/a', values)
+        self.assertIn('https://www.example.org/b', values)
+        self.assertFalse(any('javascript' in v for v in values))
+        self.assertEqual(len(result['warnings']), 1)
+
+    def test_item_detail_links_carry_noopener(self):
+        item = Item.objects.create(collection=self.coll,
+                                   values={'link': 'https://example.org/x'})
+        resp = self.client.get(reverse('item_detail', args=[self.coll.pk, item.pk]))
+        self.assertContains(resp, 'rel="noopener noreferrer">https://example.org/x')
+
+
+class DataExportThrottleTests(TestCase):
+    def test_export_is_rate_limited(self):
+        user = User.objects.create_user('throttled', 't@e.de', 'pw')
+        self.client.force_login(user)
+        for _ in range(10):
+            self.assertEqual(self.client.get(reverse('data_export')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('data_export')).status_code, 429)
+
+
+class ItemBrowseNavigationTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('navowner', 'n@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Nav')
+        add_field(self.coll, 'name', 'Name', FieldType.TEXT)
+        self.a = Item.objects.create(collection=self.coll, values={'name': 'Ältester'})
+        self.b = Item.objects.create(collection=self.coll, values={'name': 'Mitte'})
+        self.c = Item.objects.create(collection=self.coll, values={'name': 'Neuester'})
+
+    def test_middle_item_links_to_both_neighbours(self):
+        resp = self.client.get(reverse('item_detail', args=[self.coll.pk, self.b.pk]))
+        self.assertContains(resp, reverse('item_detail', args=[self.coll.pk, self.c.pk]))
+        self.assertContains(resp, reverse('item_detail', args=[self.coll.pk, self.a.pk]))
+
+    def test_newest_item_has_no_newer_link(self):
+        resp = self.client.get(reverse('item_detail', args=[self.coll.pk, self.c.pk]))
+        # Only the next-older neighbour is linked; the oldest item is not.
+        self.assertNotContains(resp, reverse('item_detail', args=[self.coll.pk, self.a.pk]))
+        self.assertContains(resp, reverse('item_detail', args=[self.coll.pk, self.b.pk]))
+
+    def test_lend_due_date_has_min_today(self):
+        resp = self.client.get(reverse('item_detail', args=[self.coll.pk, self.b.pk]))
+        from django.utils import timezone
+        self.assertContains(resp, 'min="%s"' % timezone.localdate().isoformat())
+
+
+class PerPageOverrideTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('ppowner', 'pp@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Viele')
+        add_field(self.coll, 'name', 'Name', FieldType.TEXT)
+        Item.objects.bulk_create([
+            Item(collection=self.coll, values={'name': f'Ding {i}'}) for i in range(30)
+        ])
+
+    def test_per_page_query_param_overrides_setting(self):
+        resp = self.client.get(reverse('collection_detail', args=[self.coll.pk]),
+                               {'per_page': 25})
+        self.assertEqual(len(resp.context['rows']), 25)
+        self.assertContains(resp, 'Pro Seite:')
+        self.assertContains(resp, '<strong>25</strong>')
+
+    def test_invalid_per_page_falls_back_to_setting(self):
+        resp = self.client.get(reverse('collection_detail', args=[self.coll.pk]),
+                               {'per_page': 'kaputt'})
+        self.assertEqual(len(resp.context['rows']), 30)  # default 50 per page
+
+    def test_per_page_is_clamped(self):
+        resp = self.client.get(reverse('collection_detail', args=[self.coll.pk]),
+                               {'per_page': 1})
+        self.assertEqual(len(resp.context['rows']), 5)  # lower clamp
+
+
+class SavedViewTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('svowner', 'sv@e.de', 'pw')
+        self.viewer = User.objects.create_user('svviewer', 'svv@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Regal')
+        add_field(self.coll, 'name', 'Name', FieldType.TEXT)
+        CollectionShare.objects.create(collection=self.coll, user=self.viewer,
+                                       permission='view')
+
+    def test_save_current_filters_drops_page_param(self):
+        from .models import SavedView
+        resp = self.client.post(reverse('saved_view_create', args=[self.coll.pk]),
+                                {'name': 'Regal 3', 'querystring': 'q=krimi&page=4&sort=name'})
+        self.assertEqual(resp.status_code, 302)
+        view = SavedView.objects.get(collection=self.coll, name='Regal 3')
+        self.assertIn('q=krimi', view.querystring)
+        self.assertIn('sort=name', view.querystring)
+        self.assertNotIn('page=', view.querystring)
+
+    def test_saved_view_appears_as_link_and_reapplies(self):
+        self.client.post(reverse('saved_view_create', args=[self.coll.pk]),
+                         {'name': 'Krimis', 'querystring': 'q=krimi'})
+        resp = self.client.get(reverse('collection_detail', args=[self.coll.pk]))
+        self.assertContains(resp, 'Krimis')
+        self.assertContains(resp, '?q=krimi')
+
+    def test_same_name_updates_existing_view(self):
+        from .models import SavedView
+        create = reverse('saved_view_create', args=[self.coll.pk])
+        self.client.post(create, {'name': 'A', 'querystring': 'q=x'})
+        self.client.post(create, {'name': 'A', 'querystring': 'q=y'})
+        views = SavedView.objects.filter(collection=self.coll, name='A')
+        self.assertEqual(views.count(), 1)
+        self.assertEqual(views.first().querystring, 'q=y')
+
+    def test_viewer_cannot_manage_views(self):
+        from .models import SavedView
+        self.client.force_login(self.viewer)
+        resp = self.client.post(reverse('saved_view_create', args=[self.coll.pk]),
+                                {'name': 'X', 'querystring': ''})
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(SavedView.objects.exists())
+
+    def test_delete_view(self):
+        from .models import SavedView
+        self.client.post(reverse('saved_view_create', args=[self.coll.pk]),
+                         {'name': 'Weg', 'querystring': 'q=z'})
+        view = SavedView.objects.get(name='Weg')
+        self.client.post(reverse('saved_view_delete', args=[self.coll.pk, view.pk]))
+        self.assertFalse(SavedView.objects.filter(pk=view.pk).exists())
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class ItemGalleryTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('galowner', 'g@e.de', 'pw')
+        self.viewer = User.objects.create_user('galviewer', 'gv@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Galerie')
+        add_field(self.coll, 'name', 'Name', FieldType.TEXT)
+        CollectionShare.objects.create(collection=self.coll, user=self.viewer,
+                                       permission='view')
+        self.item = Item.objects.create(collection=self.coll, values={'name': 'Ding'})
+        self.url = reverse('item_photo_add', args=[self.coll.pk, self.item.pk])
+
+    def _photo(self, name='foto.png', color='blue'):
+        return SimpleUploadedFile(name, make_png(color), 'image/png')
+
+    def test_upload_multiple_photos(self):
+        from .models import GALLERY_KEY
+        resp = self.client.post(self.url, {'photos': [self._photo('a.png'),
+                                                      self._photo('b.png', 'green')]})
+        self.assertEqual(resp.status_code, 302)
+        photos = self.item.assets.filter(field_key=GALLERY_KEY)
+        self.assertEqual(photos.count(), 2)
+        detail = self.client.get(reverse('item_detail', args=[self.coll.pk, self.item.pk]))
+        self.assertContains(detail, 'bi-images')
+        self.assertContains(detail, photos.first().file.url)
+
+    def test_non_image_upload_is_rejected(self):
+        from .models import GALLERY_KEY
+        bad = SimpleUploadedFile('nicht-bild.png', b'kein bild', 'image/png')
+        self.client.post(self.url, {'photos': [bad]})
+        self.assertEqual(self.item.assets.filter(field_key=GALLERY_KEY).count(), 0)
+
+    def test_viewer_cannot_upload(self):
+        self.client.force_login(self.viewer)
+        resp = self.client.post(self.url, {'photos': [self._photo()]})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_photo_removes_file_from_disk(self):
+        import os
+        from .models import GALLERY_KEY
+        self.client.post(self.url, {'photos': [self._photo()]})
+        asset = self.item.assets.get(field_key=GALLERY_KEY)
+        path = asset.file.path
+        self.assertTrue(os.path.exists(path))
+        self.client.post(reverse('item_photo_delete',
+                                 args=[self.coll.pk, self.item.pk, asset.pk]))
+        self.assertFalse(os.path.exists(path))
+        self.assertEqual(self.item.assets.count(), 0)
+
+    def test_duplicate_copies_gallery_without_polluting_values(self):
+        from .models import GALLERY_KEY
+        self.client.post(self.url, {'photos': [self._photo()]})
+        resp = self.client.post(reverse('item_duplicate',
+                                        args=[self.coll.pk, self.item.pk]))
+        self.assertEqual(resp.status_code, 302)
+        copy = self.coll.items.exclude(pk=self.item.pk).get()
+        self.assertEqual(copy.assets.filter(field_key=GALLERY_KEY).count(), 1)
+        self.assertNotIn(GALLERY_KEY, copy.values)
+
+    def test_field_keys_starting_with_underscore_are_rejected(self):
+        from .forms import FieldDefinitionForm
+        form = FieldDefinitionForm(
+            {'label': 'Intern', 'key': '__gallery', 'field_type': 'text', 'order': 0},
+            collection=self.coll)
+        self.assertFalse(form.is_valid())
+        self.assertIn('key', form.errors)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class BackupTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('bakowner', 'b@e.de', 'pw')
+        self.other = User.objects.create_user('bakother', 'bo@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Schatzkiste')
+        add_field(self.coll, 'name', 'Name', FieldType.TEXT, 0)
+        add_field(self.coll, 'bild', 'Bild', FieldType.IMAGE, 1)
+        self.client.post(reverse('item_create', args=[self.coll.pk]), {
+            'name': 'Goldmünze',
+            'bild': SimpleUploadedFile('muenze.png', make_png(), 'image/png'),
+        })
+        self.item = self.coll.items.get()
+        # One extra gallery photo — must land in the backup too.
+        self.client.post(reverse('item_photo_add', args=[self.coll.pk, self.item.pk]),
+                         {'photos': [SimpleUploadedFile('detail.png', make_png('green'),
+                                                        'image/png')]})
+
+    def test_backup_zip_contains_excel_json_and_media(self):
+        import zipfile as ziplib
+        resp = self.client.get(reverse('collection_backup', args=[self.coll.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/zip')
+        self.assertIn('sicherung-schatzkiste', resp['Content-Disposition'])
+        archive = ziplib.ZipFile(io.BytesIO(b''.join(resp.streaming_content)))
+        names = archive.namelist()
+        self.assertIn('daten.xlsx', names)
+        self.assertIn('sammlung.json', names)
+        media = [n for n in names if n.startswith('medien/')]
+        self.assertEqual(len(media), 2)  # image field + gallery photo
+        data = json.loads(archive.read('sammlung.json'))
+        self.assertEqual(data['name'], 'Schatzkiste')
+        self.assertEqual(data['items'][0]['values']['name'], 'Goldmünze')
+        self.assertEqual(len(data['items'][0]['files']), 2)
+
+    def test_backup_includes_trashed_items_in_json(self):
+        self.item.soft_delete()
+        import zipfile as ziplib
+        resp = self.client.get(reverse('collection_backup', args=[self.coll.pk]))
+        archive = ziplib.ZipFile(io.BytesIO(b''.join(resp.streaming_content)))
+        data = json.loads(archive.read('sammlung.json'))
+        self.assertIsNotNone(data['items'][0]['deleted_at'])
+        self.assertTrue(any(n.startswith('medien/') for n in archive.namelist()))
+
+    def test_backup_requires_access(self):
+        self.client.force_login(self.other)
+        resp = self.client.get(reverse('collection_backup', args=[self.coll.pk]))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_backup_is_rate_limited(self):
+        url = reverse('collection_backup', args=[self.coll.pk])
+        for _ in range(10):
+            self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 429)
+
+    def test_account_export_reuses_collection_json(self):
+        resp = self.client.get(reverse('data_export'))
+        data = json.loads(resp.content)
+        collection = data['collections'][0]
+        self.assertEqual(collection['name'], 'Schatzkiste')
+        self.assertIn('saved_views', collection)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class RestoreTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('restowner', 'r@e.de', 'pw')
+        self.friend = User.objects.create_user('restfriend', 'rf@e.de', 'pw')
+        self.client.force_login(self.owner)
+        self.coll = Collection.objects.create(owner=self.owner, name='Original',
+                                              description='Meine Schätze',
+                                              lookup_provider='books')
+        self.f_name = add_field(self.coll, 'name', 'Name', FieldType.TEXT, 0)
+        add_field(self.coll, 'genre', 'Genre', FieldType.CHOICE, 1,
+                  config={'choices': ['Krimi', 'SF'], 'lookup_attribute': 'categories'})
+        add_field(self.coll, 'bild', 'Bild', FieldType.IMAGE, 2)
+        self.art = ItemType.objects.create(collection=self.coll, name='Buch')
+        self.f_name.required_for_types.set([self.art])
+        CollectionShare.objects.create(collection=self.coll, user=self.friend,
+                                       permission='view')
+        from .models import SavedView
+        SavedView.objects.create(collection=self.coll, name='Krimis',
+                                 querystring='f_genre=Krimi', created_by=self.owner)
+        # Item with type, image, gallery photo and a loan.
+        self.client.post(reverse('item_create', args=[self.coll.pk]), {
+            '__item_type': self.art.pk, 'name': 'Der Alienist', 'genre': 'Krimi',
+            'bild': SimpleUploadedFile('cover.png', make_png(), 'image/png'),
+        })
+        self.item = self.coll.items.get()
+        self.client.post(reverse('item_photo_add', args=[self.coll.pk, self.item.pk]),
+                         {'photos': [SimpleUploadedFile('back.png', make_png('green'),
+                                                        'image/png')]})
+        Loan.objects.create(item=self.item, borrower='Anna', note='vorsichtig!')
+        # A second, trashed item.
+        trashed = Item.objects.create(collection=self.coll, values={'name': 'Alt'})
+        trashed.soft_delete()
+
+    def _backup_bytes(self) -> bytes:
+        resp = self.client.get(reverse('collection_backup', args=[self.coll.pk]))
+        return b''.join(resp.streaming_content)
+
+    def test_full_round_trip_restores_everything_but_shares(self):
+        import os
+        from .models import GALLERY_KEY, SavedView
+        backup = self._backup_bytes()
+        self.client.force_login(self.friend)
+        resp = self.client.post(reverse('collection_restore'), {
+            'file': SimpleUploadedFile('sicherung.zip', backup, 'application/zip')})
+        self.assertEqual(resp.status_code, 302)
+        restored = Collection.objects.get(owner=self.friend)
+        self.assertEqual(restored.name, 'Original')
+        self.assertEqual(restored.lookup_provider, 'books')
+        # Structure: fields incl. config, item type, per-type required mapping.
+        genre = restored.fields.get(key='genre')
+        self.assertEqual(genre.config['choices'], ['Krimi', 'SF'])
+        self.assertEqual(genre.config['lookup_attribute'], 'categories')
+        art = restored.item_types.get()
+        self.assertEqual(art.name, 'Buch')
+        self.assertEqual(list(restored.fields.get(key='name').required_for_types.all()),
+                         [art])
+        # Saved view.
+        self.assertEqual(SavedView.objects.get(collection=restored).querystring,
+                         'f_genre=Krimi')
+        # Items: one active with remapped file values, one in the trash.
+        item = restored.items.get()
+        self.assertEqual(item.values['name'], 'Der Alienist')
+        self.assertEqual(item.item_type, art)
+        asset_ref = item.values['bild']
+        asset = item.assets.get(pk=asset_ref['asset_id'])
+        self.assertNotEqual(str(asset.pk), str(self.item.assets.exclude(
+            field_key=GALLERY_KEY).get().pk))
+        self.assertTrue(os.path.exists(asset.file.path))
+        self.assertEqual(item.assets.filter(field_key=GALLERY_KEY).count(), 1)
+        self.assertNotIn(GALLERY_KEY, item.values)
+        self.assertEqual(item.loans.get().borrower, 'Anna')
+        self.assertEqual(Item.all_objects.filter(collection=restored,
+                                                 deleted_at__isnull=False).count(), 1)
+        # Shares are deliberately NOT restored.
+        self.assertEqual(restored.shares.count(), 0)
+
+    def test_garbage_zip_is_rejected(self):
+        self.client.force_login(self.friend)
+        resp = self.client.post(reverse('collection_restore'), {
+            'file': SimpleUploadedFile('kaputt.zip', b'das ist kein zip', 'application/zip')})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Collection.objects.filter(owner=self.friend).exists())
+
+    def test_zip_without_manifest_is_rejected(self):
+        import zipfile as ziplib
+        buf = io.BytesIO()
+        with ziplib.ZipFile(buf, 'w') as zf:
+            zf.writestr('irgendwas.txt', 'hallo')
+        self.client.force_login(self.friend)
+        self.client.post(reverse('collection_restore'), {
+            'file': SimpleUploadedFile('x.zip', buf.getvalue(), 'application/zip')})
+        self.assertFalse(Collection.objects.filter(owner=self.friend).exists())
+
+    def test_member_count_guard(self):
+        import zipfile as ziplib
+        from . import restore as restore_mod
+        buf = io.BytesIO()
+        with ziplib.ZipFile(buf, 'w') as zf:
+            for i in range(4):
+                zf.writestr(f'file{i}.txt', 'x')
+        self.client.force_login(self.friend)
+        with mock.patch.object(restore_mod, 'MAX_MEMBERS', 3):
+            self.client.post(reverse('collection_restore'), {
+                'file': SimpleUploadedFile('bomb.zip', buf.getvalue(), 'application/zip')})
+        self.assertFalse(Collection.objects.filter(owner=self.friend).exists())
+
+
+class NotificationTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('notifowner', 'no@e.de', 'pw')
+        self.friend = User.objects.create_user('notiffriend', 'nf@e.de', 'pw')
+        self.coll = Collection.objects.create(owner=self.owner, name='Geteiltes')
+
+    def _share(self, permission='view'):
+        self.client.force_login(self.owner)
+        return self.client.post(reverse('collection_shares', args=[self.coll.pk]),
+                                {'identifier': 'notiffriend', 'permission': permission})
+
+    def test_share_creates_notification_for_recipient(self):
+        from .models import Notification
+        self._share()
+        notification = Notification.objects.get(user=self.friend)
+        self.assertEqual(notification.kind, Notification.KIND_SHARE)
+        self.assertIn('Geteiltes', notification.message)
+        self.assertIn('notifowner', notification.message)
+        self.assertIsNone(notification.read_at)
+
+    def test_bell_shows_unread_badge_and_message(self):
+        self._share()
+        self.client.force_login(self.friend)
+        resp = self.client.get(reverse('dashboard'))
+        self.assertContains(resp, 'bi-bell')
+        self.assertContains(resp, 'Geteiltes')
+        self.assertContains(resp, 'Alle als gelesen markieren')
+
+    def test_open_marks_read_and_redirects_to_target(self):
+        from .models import Notification
+        self._share()
+        notification = Notification.objects.get(user=self.friend)
+        self.client.force_login(self.friend)
+        resp = self.client.get(reverse('notification_open', args=[notification.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(str(self.coll.pk), resp['Location'])
+        notification.refresh_from_db()
+        self.assertIsNotNone(notification.read_at)
+
+    def test_cannot_open_foreign_notifications(self):
+        from .models import Notification
+        self._share()
+        notification = Notification.objects.get(user=self.friend)
+        self.client.force_login(self.owner)
+        resp = self.client.get(reverse('notification_open', args=[notification.pk]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_reshare_resurfaces_read_notification(self):
+        from .models import Notification
+        self._share()
+        Notification.objects.filter(user=self.friend).update(read_at='2026-01-01T00:00:00Z')
+        self._share(permission='edit')
+        notification = Notification.objects.get(user=self.friend)
+        self.assertIsNone(notification.read_at)
+        self.assertIn('Bearbeiten', notification.message)
+
+    def test_share_revoke_removes_notification(self):
+        from .models import Notification
+        self._share()
+        share = CollectionShare.objects.get()
+        self.client.post(reverse('share_delete', args=[self.coll.pk, share.pk]))
+        self.assertFalse(Notification.objects.filter(user=self.friend).exists())
+
+    def test_mark_all_read(self):
+        from .models import Notification
+        self._share()
+        self.client.force_login(self.friend)
+        self.client.post(reverse('notifications_read_all'), {'next': '/'})
+        self.assertFalse(Notification.objects.filter(user=self.friend,
+                                                     read_at__isnull=True).exists())
+
+    def test_pending_registration_notifies_staff(self):
+        from .models import Notification
+        staff = User.objects.create_user('notifstaff', 'ns@e.de', 'pw', is_staff=True)
+        self.client.logout()
+        self.client.post(reverse('register'), {
+            'username': 'newbie', 'email': 'newbie@e.de',
+            'password1': 'sicheres-passwort-77', 'password2': 'sicheres-passwort-77'})
+        notification = Notification.objects.get(user=staff)
+        self.assertEqual(notification.kind, Notification.KIND_REGISTRATION)
+        self.assertIn('newbie', notification.message)
+
+    def test_overdue_loans_appear_in_bell(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        item = Item.objects.create(collection=self.coll, values={'name': 'Buch'})
+        Loan.objects.create(item=item, borrower='Bo',
+                            lent_at=timezone.localdate() - timedelta(days=2),
+                            due_at=timezone.localdate() - timedelta(days=1))
+        self.client.force_login(self.owner)
+        resp = self.client.get(reverse('collection_list'))
+        self.assertContains(resp, 'überfällige Ausleihe')

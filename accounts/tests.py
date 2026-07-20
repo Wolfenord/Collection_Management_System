@@ -519,3 +519,73 @@ class PasswordHashingTests(TestCase):
     def test_new_passwords_use_argon2(self):
         user = User.objects.create_user('hash-test', 'h@e.de', 'ein-passwort-123')
         self.assertTrue(user.password.startswith('argon2'), user.password[:20])
+
+
+class PasskeyLabelTests(TestCase):
+    """Empty label → the device name from the User-Agent is used."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'anna', 'anna@e.de', 'pw-123', approval_status=User.APPROVAL_APPROVED)
+        self.client.force_login(self.user)
+
+    def _register(self, label='', agent='Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X)'):
+        from unittest import mock
+        from accounts import passkeys as pk
+        self.client.post(reverse('passkey_register_begin'), HTTP_USER_AGENT=agent)
+        verified = mock.Mock(credential_id=b'cred-id', credential_public_key=b'pubkey',
+                             sign_count=0)
+        with mock.patch.object(pk, 'verify_registration_response', return_value=verified):
+            return self.client.post(
+                reverse('passkey_register_complete'),
+                '{"label": "%s", "credential": {}}' % label,
+                content_type='application/json', HTTP_USER_AGENT=agent)
+
+    def test_empty_label_uses_device_name(self):
+        resp = self._register()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.user.passkeys.get().label, 'iPhone')
+
+    def test_android_and_unknown_agents(self):
+        from accounts.passkeys import _device_label
+
+        class Req:
+            def __init__(self, agent):
+                self.META = {'HTTP_USER_AGENT': agent}
+        self.assertEqual(_device_label(Req('Mozilla/5.0 (Linux; Android 15)')), 'Android-Gerät')
+        self.assertEqual(_device_label(Req('curl/8.0')), 'Passkey')
+
+    def test_typed_label_wins(self):
+        resp = self._register(label='Mein YubiKey')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.user.passkeys.get().label, 'Mein YubiKey')
+
+
+class PasskeyIpHintTests(TestCase):
+    """Opened via raw IP → clear hint with the name-based URL instead of
+    passkey buttons that can never work (WebAuthn refuses IP RP-IDs)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            'anna', 'anna@e.de', 'pw-123', approval_status=User.APPROVAL_APPROVED)
+
+    def test_login_page_via_ip_shows_hint_instead_of_button(self):
+        from django.test import override_settings
+        with override_settings(ALLOWED_HOSTS=['*']):
+            resp = self.client.get(reverse('login'), HTTP_HOST='192.168.178.60:8080')
+        self.assertContains(resp, 'funktionieren nicht über die IP-Adresse')
+        self.assertContains(resp, '.local:8080')
+        self.assertNotContains(resp, 'id="passkeyLogin"')
+
+    def test_login_page_via_name_shows_button(self):
+        resp = self.client.get(reverse('login'))  # host: testserver
+        self.assertContains(resp, 'id="passkeyLogin"')
+        self.assertNotContains(resp, 'funktionieren nicht über die IP-Adresse')
+
+    def test_profile_via_ip_shows_hint_instead_of_button(self):
+        from django.test import override_settings
+        self.client.force_login(self.user)
+        with override_settings(ALLOWED_HOSTS=['*']):
+            resp = self.client.get(reverse('profile'), HTTP_HOST='192.168.178.60:8080')
+        self.assertContains(resp, 'funktionieren nicht über die IP-Adresse')
+        self.assertNotContains(resp, 'id="passkeyAdd"')

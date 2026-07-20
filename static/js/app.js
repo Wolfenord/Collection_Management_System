@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', function () {
         window.introJs().setOptions({
             nextLabel: gettext('Weiter'), prevLabel: gettext('Zurück'), doneLabel: gettext('Fertig'),
             skipLabel: '✕', tooltipClass: 'cms-tour',
+            // Phones: scroll so the TOOLTIP is visible, not just the
+            // highlighted element — otherwise the text can sit off-screen.
+            scrollTo: 'tooltip',
+            scrollToElement: true,
+            positionPrecedence: ['bottom', 'top', 'right', 'left'],
+            disableInteraction: true,
         }).start();
     }
 

@@ -18,6 +18,10 @@ urlpatterns = [
     path('profile/tokens/<int:token_pk>/delete/', views.token_delete, name='token_delete'),
     path('password/', views.password_change, name='password_change'),
 
+    # GDPR self-service: full data export & account deletion.
+    path('export.json', views.data_export, name='data_export'),
+    path('delete/', views.account_delete, name='account_delete'),
+
     # Passkeys (WebAuthn): register on the profile page, password-less login.
     path('passkeys/register/begin/', passkeys.register_begin, name='passkey_register_begin'),
     path('passkeys/register/complete/', passkeys.register_complete, name='passkey_register_complete'),

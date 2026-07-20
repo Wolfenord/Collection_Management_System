@@ -30,6 +30,11 @@ urlpatterns = [
                               content_type='application/javascript'),
          name='service_worker'),
     path('robots.txt', robots_txt, name='robots_txt'),
+    # Legal pages (public — required to be reachable without an account).
+    path('impressum/', TemplateView.as_view(template_name='pages/imprint.html'),
+         name='imprint'),
+    path('datenschutz/', TemplateView.as_view(template_name='pages/privacy.html'),
+         name='privacy'),
     # Browsers request /favicon.ico regardless of <link rel="icon">.
     path('favicon.ico', RedirectView.as_view(
         url=settings.STATIC_URL + 'icons/icon-192.png', permanent=True)),

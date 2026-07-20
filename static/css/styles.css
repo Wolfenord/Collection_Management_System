@@ -1,14 +1,217 @@
 /* Project-specific tweaks on top of Bootstrap. */
+
+/* ---------------------------------------------------------------------------
+   Design system: indigo brand colour instead of stock Bootstrap blue.
+   Bootstrap 5.3 exposes component-level CSS variables, so recolouring works
+   without recompiling Sass: override the global --bs-primary tokens (used by
+   text-bg-primary, progress bars, the Intro.js ring, …) plus the compiled
+   spots (buttons, links, focus rings, tabs) that don't read the global var.
+--------------------------------------------------------------------------- */
+:root {
+    --cms-primary: #4f46e5;
+    --cms-primary-hover: #4338ca;
+    --cms-primary-active: #3730a3;
+    --bs-primary: #4f46e5;
+    --bs-primary-rgb: 79, 70, 229;
+    --bs-link-color: #4f46e5;
+    --bs-link-color-rgb: 79, 70, 229;
+    --bs-link-hover-color: #4338ca;
+    --bs-link-hover-color-rgb: 67, 56, 202;
+    /* Slightly cooler page background than Bootstrap's default grey. */
+    --bs-tertiary-bg: #f2f4f8;
+}
+[data-bs-theme="dark"] {
+    /* Lighter indigo for readable links/accents on dark surfaces. */
+    --cms-primary: #818cf8;
+    --cms-primary-hover: #a5b4fc;
+    --cms-primary-active: #6366f1;
+    --bs-primary: #818cf8;
+    --bs-primary-rgb: 129, 140, 248;
+    --bs-link-color: #a5b4fc;
+    --bs-link-color-rgb: 165, 180, 252;
+    --bs-link-hover-color: #c7d2fe;
+    --bs-link-hover-color-rgb: 199, 210, 254;
+    --bs-tertiary-bg: #1b1e21;
+}
+
 body {
     min-height: 100vh;
 }
 
-.card {
-    border: none;
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
 }
 
+/* Primary buttons in the brand colour (dark mode keeps the stronger tone so
+   white button text stays readable). */
+.btn-primary {
+    --bs-btn-bg: #4f46e5;
+    --bs-btn-border-color: #4f46e5;
+    --bs-btn-hover-bg: #4338ca;
+    --bs-btn-hover-border-color: #4338ca;
+    --bs-btn-active-bg: #3730a3;
+    --bs-btn-active-border-color: #3730a3;
+    --bs-btn-disabled-bg: #4f46e5;
+    --bs-btn-disabled-border-color: #4f46e5;
+    --bs-btn-focus-shadow-rgb: 99, 102, 241;
+}
+.btn-outline-primary {
+    --bs-btn-color: var(--cms-primary);
+    --bs-btn-border-color: var(--cms-primary);
+    --bs-btn-hover-bg: var(--cms-primary);
+    --bs-btn-hover-border-color: var(--cms-primary);
+    --bs-btn-active-bg: var(--cms-primary);
+    --bs-btn-active-border-color: var(--cms-primary);
+    --bs-btn-focus-shadow-rgb: 99, 102, 241;
+}
+[data-bs-theme="dark"] .btn-outline-primary {
+    --bs-btn-hover-color: #1e1b4b;
+    --bs-btn-active-color: #1e1b4b;
+}
+
+.btn {
+    border-radius: 0.5rem;
+}
+.btn-sm {
+    border-radius: 0.4rem;
+}
+.badge {
+    border-radius: 0.4rem;
+}
+
+/* Form focus in the brand colour (compiled blue in stock Bootstrap). */
+.form-control:focus,
+.form-select:focus {
+    border-color: rgba(var(--bs-primary-rgb), 0.55);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.18);
+}
+.form-check-input:checked {
+    background-color: var(--cms-primary);
+    border-color: var(--cms-primary);
+}
+.form-check-input:focus {
+    border-color: rgba(var(--bs-primary-rgb), 0.55);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.18);
+}
+
+/* Pagination follows the brand colour. */
+.pagination {
+    --bs-pagination-active-bg: var(--cms-primary);
+    --bs-pagination-active-border-color: var(--cms-primary);
+    --bs-pagination-color: var(--bs-link-color);
+    --bs-pagination-hover-color: var(--bs-link-hover-color);
+    --bs-pagination-focus-color: var(--bs-link-hover-color);
+    --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.18);
+}
+[data-bs-theme="dark"] .pagination {
+    --bs-pagination-active-color: #1e1b4b;
+}
+
+/* Navbar: brand gradient with a soft drop shadow. */
+.navbar.bg-primary {
+    background: linear-gradient(120deg, #4338ca 0%, #5b3fd4 55%, #7c3aed 100%) !important;
+    box-shadow: 0 2px 14px rgba(49, 46, 129, 0.28);
+}
 .navbar-brand i {
     vertical-align: -2px;
+}
+
+/* Cards: softer corners and a gentler, layered shadow. */
+.card {
+    border: none;
+    border-radius: 0.75rem;
+}
+.card > .table-responsive:only-child,
+.card .card-footer:last-child {
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+}
+.shadow-sm {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.06) !important;
+}
+[data-bs-theme="dark"] .shadow-sm {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+}
+.rounded {
+    border-radius: 0.75rem !important;
+}
+.alert {
+    border-radius: 0.65rem;
+}
+
+/* Collection cards on the dashboard/list: lift on hover. */
+.collection-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.collection-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10), 0 14px 32px rgba(15, 23, 42, 0.12) !important;
+}
+[data-bs-theme="dark"] .collection-card:hover {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+}
+.collection-card .card-title a {
+    color: inherit;
+}
+
+/* Dashboard/statistics stat tiles: gradient + icon chip. */
+.stat-card {
+    border: none;
+    color: #fff;
+}
+.stat-card .stat-icon {
+    flex: 0 0 auto;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.22);
+}
+.stat-card .stat-label {
+    opacity: 0.9;
+    font-size: 0.85rem;
+}
+.stat-primary   { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+.stat-info      { background: linear-gradient(135deg, #0e7490, #2563eb); }
+.stat-secondary { background: linear-gradient(135deg, #475569, #1e293b); }
+.stat-success   { background: linear-gradient(135deg, #059669, #0f766e); }
+
+/* Tabs: underline style instead of boxed tabs. */
+.nav-tabs {
+    gap: 0.25rem;
+}
+.nav-tabs .nav-link {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0.5rem 0.5rem 0 0;
+    color: var(--bs-secondary-color);
+}
+.nav-tabs .nav-link:hover {
+    color: var(--bs-body-color);
+    background: var(--bs-tertiary-bg);
+}
+.nav-tabs .nav-link.active {
+    color: var(--cms-primary);
+    background: transparent;
+    border-bottom: 2px solid var(--cms-primary);
+    font-weight: 600;
+}
+
+/* Table headers: quieter, uppercase micro-labels. */
+.table thead th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+
+.breadcrumb {
+    font-size: 0.85rem;
 }
 
 code {
@@ -147,5 +350,20 @@ code {
     .table-stack td.table-stack-actions .btn {
         display: block;
         width: 100%;
+    }
+}
+
+/* Guided tour on phones: keep the tooltip inside the viewport. Intro.js
+   positions it absolutely; on narrow screens an unconstrained tooltip can
+   overflow and its text ends up invisible next to the highlight. */
+@media (max-width: 575.98px) {
+    .introjs-tooltip {
+        max-width: calc(100vw - 20px);
+        min-width: 240px;
+    }
+    .introjs-tooltip.introjs-floating {
+        left: 50% !important;
+        transform: translate(-50%, -50%);
+        margin-left: 0 !important;
     }
 }

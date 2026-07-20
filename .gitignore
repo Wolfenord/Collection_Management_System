@@ -12,6 +12,8 @@ db.sqlite3-journal
 
 # Environment / secrets
 .env
+config.ini
+/dev-certs/
 
 # IDE / OS
 .idea/

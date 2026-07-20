@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: CMS 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-07 20:41+0200\n"
+"POT-Creation-Date: 2026-07-18 23:36+0200\n"
 "PO-Revision-Date: 2026-06-23 22:00+0200\n"
 "Language-Team: English\n"
 "Language: en\n"
@@ -14,12 +14,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: Collection_Management_System/admin.py:81
+#: Collection_Management_System/admin.py:96
 #, python-format
 msgid "Unbekannter Schlüssel „%(key)s“. Bekannt sind: %(known)s"
 msgstr "Unknown key “%(key)s”. Known keys: %(known)s"
 
-#: Collection_Management_System/admin.py:87
+#: Collection_Management_System/admin.py:102
 #, python-format
 msgid "Ungültiger Wert für „%(key)s“: %(error)s"
 msgstr "Invalid value for “%(key)s”: %(error)s"
@@ -76,11 +76,12 @@ msgid "Gegenstand nicht gefunden."
 msgstr "Item not found."
 
 #: Collection_Management_System/dynamic_forms.py:121
-#: Collection_Management_System/export.py:52
+#: Collection_Management_System/export.py:59
 #: Collection_Management_System/filters.py:41
-#: Collection_Management_System/views.py:164
-#: templates/collections/collection_detail.html:178
-#: templates/collections/collection_detail.html:280
+#: Collection_Management_System/price_search.py:319
+#: Collection_Management_System/views.py:173
+#: templates/collections/collection_detail.html:233
+#: templates/collections/collection_detail.html:335
 #: templates/collections/loans.html:17 templates/collections/search.html:38
 #: templates/collections/trash.html:33
 msgid "Art"
@@ -91,7 +92,7 @@ msgid "Für die gewählte Art ist dieses Feld erforderlich."
 msgstr "This field is required for the selected type."
 
 #: Collection_Management_System/dynamic_forms.py:162
-#: Collection_Management_System/views.py:699
+#: Collection_Management_System/views.py:858
 #, python-format
 msgid "Datei ist zu groß (maximal %(mb)s MB)."
 msgstr "File is too large (maximum %(mb)s MB)."
@@ -101,19 +102,19 @@ msgstr "File is too large (maximum %(mb)s MB)."
 msgid "Dateityp „%(ext)s“ ist nicht erlaubt. Erlaubt: %(allowed)s"
 msgstr "File type “%(ext)s” is not allowed. Allowed: %(allowed)s"
 
-#: Collection_Management_System/export.py:35
+#: Collection_Management_System/export.py:42
 #: Collection_Management_System/filters.py:23
 #: Collection_Management_System/rendering.py:29
 msgid "Ja"
 msgstr "Yes"
 
-#: Collection_Management_System/export.py:35
+#: Collection_Management_System/export.py:42
 #: Collection_Management_System/filters.py:23
 #: Collection_Management_System/rendering.py:29
 msgid "Nein"
 msgstr "No"
 
-#: Collection_Management_System/export.py:52
+#: Collection_Management_System/export.py:59
 #: templates/collections/item_detail.html:16
 msgid "ID"
 msgstr "ID"
@@ -123,8 +124,8 @@ msgstr "ID"
 msgid "Alle"
 msgstr "All"
 
-#: Collection_Management_System/filters.py:35 templates/base.html:48
-#: templates/base.html:49 templates/collections/search.html:3
+#: Collection_Management_System/filters.py:35 templates/base.html:49
+#: templates/base.html:50 templates/collections/search.html:3
 #: templates/collections/search.html:5
 msgid "Suche"
 msgstr "Search"
@@ -187,19 +188,29 @@ msgstr ""
 msgid "z. B. Meine Büchersammlung"
 msgstr "e.g. My book collection"
 
-#: Collection_Management_System/forms.py:65
+#: Collection_Management_System/forms.py:59
+msgid "Schwerpunkt der Sammlung"
+msgstr "Focus of the collection"
+
+#: Collection_Management_System/forms.py:60
+msgid ""
+"Bestimmt, welche externen Datenbanken die automatische Suche abfragt und "
+"welche Plattformen der Preisvergleich vorschlägt."
+msgstr "Determines which external databases the automatic search queries and which platforms the price comparison suggests."
+
+#: Collection_Management_System/forms.py:78
 msgid "Auswahlmöglichkeiten"
 msgstr "Choices"
 
-#: Collection_Management_System/forms.py:66
+#: Collection_Management_System/forms.py:79
 msgid "Eine Option pro Zeile (nur für Auswahl-Felder)."
 msgstr "One option per line (only for choice fields)."
 
-#: Collection_Management_System/forms.py:70
+#: Collection_Management_System/forms.py:83
 msgid "Automatisch befüllen mit"
 msgstr "Auto-fill with"
 
-#: Collection_Management_System/forms.py:71
+#: Collection_Management_System/forms.py:84
 msgid ""
 "Optional: Welcher Wert aus der externen Datenbank (z. B. nach ISBN-Scan) "
 "dieses Feld füllt. Nur wirksam, wenn die Sammlung eine externe Datenbank "
@@ -209,11 +220,11 @@ msgstr ""
 "fills this field. Only effective when the collection uses an external "
 "database."
 
-#: Collection_Management_System/forms.py:81
+#: Collection_Management_System/forms.py:94
 msgid "wird aus der Bezeichnung erzeugt"
 msgstr "generated from the label"
 
-#: Collection_Management_System/forms.py:88
+#: Collection_Management_System/forms.py:101
 msgid ""
 "Interner, eindeutiger Name (z. B. „kaufdatum“). Leer lassen – wird aus der "
 "Bezeichnung erzeugt."
@@ -221,54 +232,58 @@ msgstr ""
 "Internal, unique name (e.g. “purchase_date”). Leave empty – it is generated "
 "from the label."
 
-#: Collection_Management_System/forms.py:89
+#: Collection_Management_System/forms.py:102
 msgid ""
 "Bestimmt Eingabe und Auswertung (z. B. Preis = rechenbar, ISBN = scanbar)."
 msgstr ""
 "Determines input and analysis (e.g. price = computable, ISBN = scannable)."
 
-#: Collection_Management_System/forms.py:90
+#: Collection_Management_System/forms.py:103
 msgid "Muss beim Anlegen eines Gegenstands immer ausgefüllt werden."
 msgstr "Must always be filled in when creating an item."
 
-#: Collection_Management_System/forms.py:91
+#: Collection_Management_System/forms.py:104
 msgid "Optionaler Hinweis, der dem Nutzer am Eingabefeld angezeigt wird."
 msgstr "Optional hint shown to the user next to the input field."
 
-#: Collection_Management_System/forms.py:92
+#: Collection_Management_System/forms.py:105
 msgid "Reihenfolge der Spalte (kleinere Zahl = weiter vorne)."
 msgstr "Column order (smaller number = further to the front)."
 
-#: Collection_Management_System/forms.py:101
+#: Collection_Management_System/forms.py:114
 msgid "— nicht automatisch befüllen —"
 msgstr "— do not auto-fill —"
 
-#: Collection_Management_System/forms.py:150
+#: Collection_Management_System/forms.py:129
+msgid "Schlüssel dürfen nicht mit „_“ beginnen (intern reserviert)."
+msgstr "Keys must not start with “_” (reserved for internal use)."
+
+#: Collection_Management_System/forms.py:168
 msgid "Pflichtfelder für diese Art"
 msgstr "Required fields for this type"
 
-#: Collection_Management_System/forms.py:210
+#: Collection_Management_System/forms.py:231
 msgid "Benutzername oder E-Mail"
 msgstr "Username or e-mail"
 
-#: Collection_Management_System/forms.py:211
+#: Collection_Management_System/forms.py:232
 msgid "z. B. anna oder anna@example.com"
 msgstr "e.g. anna or anna@example.com"
 
-#: Collection_Management_System/forms.py:214
+#: Collection_Management_System/forms.py:235
 #: templates/collections/shares.html:29
 msgid "Berechtigung"
 msgstr "Permission"
 
-#: Collection_Management_System/forms.py:227
+#: Collection_Management_System/forms.py:248
 msgid "Kein Nutzer mit diesem Namen oder dieser E-Mail gefunden."
 msgstr "No user found with that name or e-mail."
 
-#: Collection_Management_System/forms.py:229
+#: Collection_Management_System/forms.py:250
 msgid "Diese Sammlung gehört dem Nutzer bereits."
 msgstr "This collection already belongs to that user."
 
-#: Collection_Management_System/imports.py:129
+#: Collection_Management_System/imports.py:139
 #, python-format
 msgid "Zeile %(row)s: Wert „%(value)s“ für „%(field)s“ übersprungen."
 msgstr "Row %(row)s: value “%(value)s” for “%(field)s” skipped."
@@ -277,92 +292,166 @@ msgstr "Row %(row)s: value “%(value)s” for “%(field)s” skipped."
 msgid "Keine Gegenstände zum Drucken."
 msgstr "No items to print."
 
-#: Collection_Management_System/lookup_providers.py:44
-#: Collection_Management_System/services.py:56
-#: Collection_Management_System/services.py:73
-#: Collection_Management_System/services.py:104
+#: Collection_Management_System/lookup_providers.py:50
+#: Collection_Management_System/services.py:58
+#: Collection_Management_System/services.py:76
+#: Collection_Management_System/services.py:111
+#: Collection_Management_System/services.py:127
 msgid "Titel"
 msgstr "Title"
 
-#: Collection_Management_System/lookup_providers.py:45
-#: Collection_Management_System/services.py:57
+#: Collection_Management_System/lookup_providers.py:51
+#: Collection_Management_System/services.py:59
 msgid "Autor(en)"
 msgstr "Author(s)"
 
-#: Collection_Management_System/lookup_providers.py:46
-#: Collection_Management_System/services.py:58
-msgid "Verlag"
-msgstr "Publisher"
+#: Collection_Management_System/lookup_providers.py:52
+#: Collection_Management_System/services.py:77
+msgid "Regie"
+msgstr "Director"
 
-#: Collection_Management_System/lookup_providers.py:47
+#: Collection_Management_System/lookup_providers.py:53
+msgid "Interpret / Künstler"
+msgstr "Artist"
+
+#: Collection_Management_System/lookup_providers.py:54
+msgid "Verlag / Label"
+msgstr "Publisher / label"
+
+#: Collection_Management_System/lookup_providers.py:55
 msgid "Erscheinungsdatum"
 msgstr "Publication date"
 
-#: Collection_Management_System/lookup_providers.py:48
-#: Collection_Management_System/services.py:59
-#: Collection_Management_System/services.py:75
-#: Collection_Management_System/services.py:91
-#: Collection_Management_System/services.py:106
+#: Collection_Management_System/lookup_providers.py:56
+#: Collection_Management_System/services.py:61
+#: Collection_Management_System/services.py:78
+#: Collection_Management_System/services.py:97
+#: Collection_Management_System/services.py:113
+#: Collection_Management_System/services.py:129
 msgid "Erscheinungsjahr"
 msgstr "Publication year"
 
-#: Collection_Management_System/lookup_providers.py:49
-#: Collection_Management_System/services.py:60
+#: Collection_Management_System/lookup_providers.py:57
+#: Collection_Management_System/services.py:62
 msgid "Seitenzahl"
 msgstr "Number of pages"
 
-#: Collection_Management_System/lookup_providers.py:50
+#: Collection_Management_System/lookup_providers.py:58
+msgid "Laufzeit / Spieldauer (Minuten)"
+msgstr "Runtime / playing time (minutes)"
+
+#: Collection_Management_System/lookup_providers.py:59
+#: Collection_Management_System/services.py:130
+msgid "Spieleranzahl"
+msgstr "Number of players"
+
+#: Collection_Management_System/lookup_providers.py:60
+msgid "Plattform / System"
+msgstr "Platform / system"
+
+#: Collection_Management_System/lookup_providers.py:61
+msgid "Medium / Format"
+msgstr "Medium / format"
+
+#: Collection_Management_System/lookup_providers.py:62
+#: Collection_Management_System/services.py:145
+msgid "Marke / Hersteller"
+msgstr "Brand / manufacturer"
+
+#: Collection_Management_System/lookup_providers.py:63
 #: Collection_Management_System/models.py:123
-#: Collection_Management_System/models.py:174
-#: Collection_Management_System/services.py:61
+#: Collection_Management_System/models.py:175
+#: Collection_Management_System/services.py:63
+#: Collection_Management_System/services.py:83
+#: Collection_Management_System/services.py:133
+#: Collection_Management_System/services.py:147
 msgid "Beschreibung"
 msgstr "Description"
 
-#: Collection_Management_System/lookup_providers.py:51
-#: Collection_Management_System/services.py:62
+#: Collection_Management_System/lookup_providers.py:64
+#: Collection_Management_System/services.py:64
 msgid "Kategorien / Genre"
 msgstr "Categories / genre"
 
-#: Collection_Management_System/lookup_providers.py:52
-#: Collection_Management_System/services.py:63
+#: Collection_Management_System/lookup_providers.py:65
+#: Collection_Management_System/services.py:65
 msgid "Sprache"
 msgstr "Language"
 
-#: Collection_Management_System/lookup_providers.py:53
+#: Collection_Management_System/lookup_providers.py:66
 #: Collection_Management_System/models.py:44
-#: Collection_Management_System/services.py:64
+#: Collection_Management_System/services.py:66
 msgid "ISBN"
 msgstr "ISBN"
 
-#: Collection_Management_System/lookup_providers.py:54
+#: Collection_Management_System/lookup_providers.py:67
+#: Collection_Management_System/models.py:45
+#: Collection_Management_System/services.py:84
+#: Collection_Management_System/services.py:101
+#: Collection_Management_System/services.py:117
+#: Collection_Management_System/services.py:134
+#: Collection_Management_System/services.py:148
+msgid "Barcode / EAN"
+msgstr "Barcode / EAN"
+
+#: Collection_Management_System/lookup_providers.py:68
 msgid "Cover-Bild (URL)"
 msgstr "Cover image (URL)"
 
-#: Collection_Management_System/lookup_providers.py:456
+#: Collection_Management_System/lookup_providers.py:88
+msgid "Gemischt / Alles"
+msgstr "Mixed / everything"
+
+#: Collection_Management_System/lookup_providers.py:89
+#: Collection_Management_System/services.py:55
+msgid "Bücher"
+msgstr "Books"
+
+#: Collection_Management_System/lookup_providers.py:90
+#: Collection_Management_System/services.py:73
+msgid "Filme & Serien"
+msgstr "Movies & TV shows"
+
+#: Collection_Management_System/lookup_providers.py:91
+#: Collection_Management_System/services.py:91
+msgid "Musik / Tonträger"
+msgstr "Music / recordings"
+
+#: Collection_Management_System/lookup_providers.py:92
+#: Collection_Management_System/services.py:108
+msgid "Videospiele"
+msgstr "Video games"
+
+#: Collection_Management_System/lookup_providers.py:93
+#: Collection_Management_System/services.py:124
+msgid "Brett- & Gesellschaftsspiele"
+msgstr "Board games"
+
+#: Collection_Management_System/lookup_providers.py:539
 msgid "Open Library (Bücher · ISBN)"
 msgstr "Open Library (books · ISBN)"
 
-#: Collection_Management_System/lookup_providers.py:457
+#: Collection_Management_System/lookup_providers.py:541
 msgid ""
 "Offene, kostenlose Bücher-Datenbank des Internet Archive. Suche per ISBN."
 msgstr "Open, free book database by the Internet Archive. Lookup by ISBN."
 
-#: Collection_Management_System/lookup_providers.py:466
+#: Collection_Management_System/lookup_providers.py:551
 msgid "Google Books (Bücher · ISBN)"
 msgstr "Google Books (books · ISBN)"
 
-#: Collection_Management_System/lookup_providers.py:467
+#: Collection_Management_System/lookup_providers.py:553
 msgid ""
 "Google-Buchsuche. Suche per ISBN, liefert zusätzlich Beschreibung & Sprache."
 msgstr ""
 "Google book search. Lookup by ISBN, additionally returns description & "
 "language."
 
-#: Collection_Management_System/lookup_providers.py:477
+#: Collection_Management_System/lookup_providers.py:564
 msgid "Deutsche Nationalbibliothek (Bücher · ISBN)"
 msgstr "German National Library / DNB (books · ISBN)"
 
-#: Collection_Management_System/lookup_providers.py:478
+#: Collection_Management_System/lookup_providers.py:566
 msgid ""
 "Offizieller DNB-Katalog – beste Abdeckung für deutschsprachige Bücher. Suche "
 "per ISBN."
@@ -370,17 +459,62 @@ msgstr ""
 "Official DNB catalogue – best coverage for German-language books. Search by "
 "ISBN."
 
-#: Collection_Management_System/lookup_providers.py:530
-msgid "DNB, Google Books & Open Library"
-msgstr "DNB, Google Books & Open Library"
+#: Collection_Management_System/lookup_providers.py:636
+msgid "MusicBrainz (Musik · Barcode)"
+msgstr "MusicBrainz (music · barcode)"
 
-#: Collection_Management_System/lookup_providers.py:531
+#: Collection_Management_System/lookup_providers.py:638
 msgid ""
-"Fragt alle verfügbaren Datenbanken (DNB, Google Books, Open Library) ab und "
-"kombiniert die Treffer – höchste Trefferquote."
+"Offene Musik-Datenbank: CDs, Vinyl & Co. per Barcode-Scan oder Titel-/"
+"Interpretensuche."
+msgstr "Open music database: CDs, vinyl & co. via barcode scan or title/artist search."
+
+#: Collection_Management_System/lookup_providers.py:709
+msgid "TMDb (Filme & Serien · Titelsuche)"
+msgstr "TMDb (films & series · title search)"
+
+#: Collection_Management_System/lookup_providers.py:711
+msgid ""
+"The Movie Database: Filme & Serien per Titelsuche. Benötigt einen "
+"kostenlosen API-Schlüssel (Systemeinstellungen → TMDb-API-Schlüssel)."
+msgstr "The Movie Database: films & series via title search. Requires a free API key (system settings → TMDb API key)."
+
+#: Collection_Management_System/lookup_providers.py:762
+msgid "RAWG (Videospiele · Titelsuche)"
+msgstr "RAWG (video games · title search)"
+
+#: Collection_Management_System/lookup_providers.py:764
+msgid ""
+"Größte offene Videospiel-Datenbank: Titelsuche mit Plattformen & Genres. "
+"Benötigt einen kostenlosen API-Schlüssel (Systemeinstellungen → RAWG-API-"
+"Schlüssel)."
+msgstr "Largest open video-game database: title search with platforms & genres. Requires a free API key (system settings → RAWG API key)."
+
+#: Collection_Management_System/lookup_providers.py:874
+msgid "Wikidata (Brett- & Gesellschaftsspiele · Titelsuche)"
+msgstr "Wikidata (board games · title search)"
+
+#: Collection_Management_System/lookup_providers.py:876
+msgid ""
+"Freie Wissensdatenbank: Titelsuche für Brett-, Karten- und "
+"Gesellschaftsspiele mit Jahr, Spielerzahl und Bild."
 msgstr ""
-"Queries all available databases (DNB, Google Books, Open Library) and "
-"combines the results – highest hit rate."
+"Free knowledge base: title search for board, card and party games with year, "
+"player count and image."
+
+#: Collection_Management_System/lookup_providers.py:916
+msgid "UPCitemdb (Alle Produkte · Barcode)"
+msgstr "UPCitemdb (all products · barcode)"
+
+#: Collection_Management_System/lookup_providers.py:918
+msgid ""
+"Generische Produktdatenbank: liefert zu fast jedem EAN/UPC-Barcode Titel, "
+"Marke und Kategorie (kostenloses Kontingent, ohne Schlüssel)."
+msgstr "Generic product database: returns title, brand and category for almost any EAN/UPC barcode (free quota, no key)."
+
+#: Collection_Management_System/lookup_providers.py:1029
+msgid "keine Datenbank verfügbar"
+msgstr "no database available"
 
 #: Collection_Management_System/management/commands/send_loan_reminders.py:57
 msgid "folgende Ausleihen sind überfällig:"
@@ -451,23 +585,18 @@ msgstr "Choice (single)"
 msgid "Auswahl (mehrere)"
 msgstr "Choice (multiple)"
 
-#: Collection_Management_System/models.py:45
-#: Collection_Management_System/services.py:80
-#: Collection_Management_System/services.py:95
-#: Collection_Management_System/services.py:110
-msgid "Barcode / EAN"
-msgstr "Barcode / EAN"
-
 #: Collection_Management_System/models.py:46
 msgid "Link (URL)"
 msgstr "Link (URL)"
 
-#: Collection_Management_System/models.py:47
+#: Collection_Management_System/models.py:47 templates/pages/imprint.html:15
+#: templates/pages/privacy.html:14
 msgid "E-Mail"
 msgstr "E-mail"
 
 #: Collection_Management_System/models.py:48
 #: Collection_Management_System/services.py:19
+#: Collection_Management_System/services.py:149
 msgid "Bild"
 msgstr "Image"
 
@@ -478,8 +607,8 @@ msgstr "File"
 
 #: Collection_Management_System/models.py:62
 #: Collection_Management_System/models.py:87
-#: Collection_Management_System/models.py:192
-#: templates/collections/collection_detail.html:253
+#: Collection_Management_System/models.py:193
+#: templates/collections/collection_detail.html:308
 msgid "Schlüssel"
 msgstr "Key"
 
@@ -496,7 +625,7 @@ msgstr "Changed by"
 msgid "Systemeinstellung"
 msgstr "System setting"
 
-#: Collection_Management_System/models.py:73 templates/base.html:105
+#: Collection_Management_System/models.py:73 templates/base.html:156
 #: templates/collections/site_settings.html:3
 #: templates/collections/site_settings.html:8
 msgid "Systemeinstellungen"
@@ -523,82 +652,278 @@ msgid "Einstellungsänderungen"
 msgstr "Setting changes"
 
 #: Collection_Management_System/models.py:122
+#: Collection_Management_System/models.py:284
 msgid "Name"
 msgstr "Name"
 
-#: Collection_Management_System/models.py:128
-msgid "Externe Datenbank"
-msgstr "External database"
+#: Collection_Management_System/models.py:129
+msgid "Schwerpunkt"
+msgstr "Focus"
 
-#: Collection_Management_System/models.py:148
+#: Collection_Management_System/models.py:149
 msgid "Nur ansehen"
 msgstr "View only"
 
-#: Collection_Management_System/models.py:149
+#: Collection_Management_System/models.py:150
 #: templates/collections/collection_detail.html:22
-#: templates/collections/collection_detail.html:265
-#: templates/collections/item_detail.html:20
+#: templates/collections/collection_detail.html:320
+#: templates/collections/item_detail.html:38
 msgid "Bearbeiten"
 msgstr "Edit"
 
-#: Collection_Management_System/models.py:173
-#: Collection_Management_System/models.py:193 accounts/models.py:104
-#: accounts/models.py:136 templates/collections/collection_detail.html:253
+#: Collection_Management_System/models.py:174
+#: Collection_Management_System/models.py:194 accounts/models.py:104
+#: accounts/models.py:136 templates/collections/collection_detail.html:308
 msgid "Bezeichnung"
 msgstr "Label"
 
-#: Collection_Management_System/models.py:194
-#: templates/collections/collection_detail.html:253
+#: Collection_Management_System/models.py:195
+#: templates/collections/collection_detail.html:308
 msgid "Typ"
 msgstr "Type"
 
-#: Collection_Management_System/models.py:195
+#: Collection_Management_System/models.py:196
 msgid "Hilfetext"
 msgstr "Help text"
 
-#: Collection_Management_System/models.py:196
+#: Collection_Management_System/models.py:197
 msgid "Pflichtfeld"
 msgstr "Required field"
 
-#: Collection_Management_System/models.py:252
+#: Collection_Management_System/models.py:245
+msgid "Benachrichtigung"
+msgstr "Notification"
+
+#: Collection_Management_System/models.py:246 templates/base.html:89
+#: templates/base.html:97
+msgid "Benachrichtigungen"
+msgstr "Notifications"
+
+#: Collection_Management_System/models.py:285
+#: templates/collections/collection_detail.html:79
+msgid "Filter"
+msgstr "Filter"
+
+#: Collection_Management_System/models.py:298
+msgid "Gespeicherte Ansicht"
+msgstr "Saved view"
+
+#: Collection_Management_System/models.py:299
+msgid "Gespeicherte Ansichten"
+msgstr "Saved views"
+
+#: Collection_Management_System/models.py:341
 #: templates/collections/trash.html:34
 msgid "Gelöscht am"
 msgstr "Deleted at"
 
-#: Collection_Management_System/models.py:291
+#: Collection_Management_System/models.py:380
 #: templates/collections/loans.html:18
 msgid "Verliehen an"
 msgstr "Lent to"
 
-#: Collection_Management_System/models.py:292
+#: Collection_Management_System/models.py:381
 msgid "Verliehen am"
 msgstr "Lent on"
 
-#: Collection_Management_System/models.py:293
-#: templates/collections/dashboard.html:46
-#: templates/collections/item_detail.html:58
+#: Collection_Management_System/models.py:382
+#: templates/collections/dashboard.html:50
+#: templates/collections/item_detail.html:122
 #: templates/collections/loans.html:19
 msgid "Rückgabe bis"
 msgstr "Due back"
 
-#: Collection_Management_System/models.py:294
+#: Collection_Management_System/models.py:383
 #: templates/collections/loans.html:20
 msgid "Notiz"
 msgstr "Note"
 
-#: Collection_Management_System/models.py:295
+#: Collection_Management_System/models.py:384
 msgid "Zurückgegeben am"
 msgstr "Returned on"
 
-#: Collection_Management_System/models.py:297
+#: Collection_Management_System/models.py:386
 msgid "Erinnerung gesendet am"
 msgstr "Reminder sent at"
 
-#: Collection_Management_System/runtime_settings.py:81
+#: Collection_Management_System/price_search.py:40
+msgid "Neu & gebraucht"
+msgstr "New & used"
+
+#: Collection_Management_System/price_search.py:41
+msgid "Nur neu"
+msgstr "New only"
+
+#: Collection_Management_System/price_search.py:42
+msgid "Nur gebraucht"
+msgstr "Used only"
+
+#: Collection_Management_System/price_search.py:46
+msgid "Relevanz"
+msgstr "Relevance"
+
+#: Collection_Management_System/price_search.py:47
+msgid "Preis aufsteigend (wo unterstützt)"
+msgstr "Price ascending (where supported)"
+
+#: Collection_Management_System/price_search.py:52
+msgid "Preisvergleich & Metasuche"
+msgstr "Price comparison & meta search"
+
+#: Collection_Management_System/price_search.py:53
+msgid "Gebraucht kaufen"
+msgstr "Buy used"
+
+#: Collection_Management_System/price_search.py:54
+msgid "Marktplätze"
+msgstr "Marketplaces"
+
+#: Collection_Management_System/price_search.py:55
+msgid "Neu kaufen"
+msgstr "Buy new"
+
+#: Collection_Management_System/price_search.py:227
+msgid ""
+"Vergleicht neue & gebrauchte Angebote vieler Buchplattformen — braucht eine "
+"ISBN."
+msgstr "Compares new & used offers across many book platforms — needs an ISBN."
+
+#: Collection_Management_System/price_search.py:230
+msgid "Preisvergleich über viele Händler; EAN-Suche liefert exakte Treffer."
+msgstr "Price comparison across many retailers; EAN search gives exact matches."
+
+#: Collection_Management_System/price_search.py:233
+msgid "Preisvergleich mit Preisverlauf, stark bei Technik & Spielen."
+msgstr "Price comparison with price history, strong for tech & games."
+
+#: Collection_Management_System/price_search.py:237
+msgid "Große Auswahl geprüfter Gebrauchtmedien; ISBN/EAN-Suche möglich."
+msgstr "Large selection of checked second-hand media; ISBN/EAN search supported."
+
+#: Collection_Management_System/price_search.py:240
+msgid "Geprüfte Gebrauchtware mit Garantie — auch zum Verkaufen geeignet."
+msgstr "Checked second-hand goods with warranty — also good for selling."
+
+#: Collection_Management_System/price_search.py:243
+msgid "Marktplatz für gebrauchte & antiquarische Bücher."
+msgstr "Marketplace for used & antiquarian books."
+
+#: Collection_Management_System/price_search.py:246
+msgid "Zentrales Verzeichnis antiquarischer Bücher."
+msgstr "Central index of antiquarian books."
+
+#: Collection_Management_System/price_search.py:249
+msgid "Internationale antiquarische Bücher (Schwester von ZVAB)."
+msgstr "International antiquarian books (sister of ZVAB)."
+
+#: Collection_Management_System/price_search.py:252
+msgid "DIE Datenbank + Marktplatz für Vinyl & CDs; Barcode-Suche möglich."
+msgstr "THE database + marketplace for vinyl & CDs; barcode search supported."
+
+#: Collection_Management_System/price_search.py:256
+msgid ""
+"Auktionen & Sofortkauf; Preisspanne, Zustand und Sortierung werden "
+"übernommen."
+msgstr "Auctions & buy-it-now; price range, condition and sorting are applied."
+
+#: Collection_Management_System/price_search.py:259
+msgid "Privatangebote in deiner Nähe — Abholung spart Versand."
+msgstr "Private offers near you — pick-up saves shipping."
+
+#: Collection_Management_System/price_search.py:263
+msgid "Suche in der passenden Kategorie; Preisspanne wird übernommen."
+msgstr "Searches the matching category; the price range is applied."
+
+#: Collection_Management_System/price_search.py:266
+msgid "Bücher & Spiele neu; ISBN-Suche möglich."
+msgstr "Books & games new; ISBN search supported."
+
+#: Collection_Management_System/price_search.py:269
+msgid "Neuware: Filme, Musik, Games & Technik."
+msgstr "New goods: films, music, games & tech."
+
+#: Collection_Management_System/price_search.py:272
+msgid "Großes Sortiment an Neuware."
+msgstr "Large range of new goods."
+
+#: Collection_Management_System/price_search.py:308
+msgid "Suchtext"
+msgstr "Search text"
+
+#: Collection_Management_System/price_search.py:310
+msgid "Titel, Autor/Interpret, Stichwörter …"
+msgstr "Title, author/artist, keywords …"
+
+#: Collection_Management_System/price_search.py:313
+msgid "ISBN / EAN / Barcode"
+msgstr "ISBN / EAN / barcode"
+
+#: Collection_Management_System/price_search.py:314
+msgid "Am genauesten: findet exakt diese Ausgabe."
+msgstr "Most precise: finds exactly this edition."
+
+#: Collection_Management_System/price_search.py:323
+msgid "Zustand"
+msgstr "Condition"
+
+#: Collection_Management_System/price_search.py:327
+msgid "Preis von"
+msgstr "Price from"
+
+#: Collection_Management_System/price_search.py:331
+msgid "Preis bis"
+msgstr "Price up to"
+
+#: Collection_Management_System/price_search.py:335
+msgid "Sortierung"
+msgstr "Sorting"
+
+#: Collection_Management_System/restore.py:51
+msgid "Das Archiv enthält zu viele Dateien."
+msgstr "The archive contains too many files."
+
+#: Collection_Management_System/restore.py:55
+msgid "Eine Datei im Archiv ist zu groß."
+msgstr "A file inside the archive is too large."
+
+#: Collection_Management_System/restore.py:58
+msgid "Das Archiv ist entpackt zu groß."
+msgstr "The archive is too large when unpacked."
+
+#: Collection_Management_System/restore.py:65
+msgid "Keine gültige Sicherung: „sammlung.json“ fehlt im Archiv."
+msgstr "Not a valid backup: “sammlung.json” is missing from the archive."
+
+#: Collection_Management_System/restore.py:67
+msgid "Die Sicherungsdaten sind zu groß."
+msgstr "The backup data is too large."
+
+#: Collection_Management_System/restore.py:71
+msgid "„sammlung.json“ ist beschädigt oder kein gültiges JSON."
+msgstr "“sammlung.json” is corrupt or not valid JSON."
+
+#: Collection_Management_System/restore.py:73
+msgid "„sammlung.json“ hat nicht das erwartete Format."
+msgstr "“sammlung.json” does not have the expected format."
+
+#: Collection_Management_System/restore.py:165
+msgid "Die Datei ist kein gültiges ZIP-Archiv."
+msgstr "The file is not a valid ZIP archive."
+
+#: Collection_Management_System/restore.py:176
+msgid "Wiederhergestellte Sammlung"
+msgstr "Restored collection"
+
+#: Collection_Management_System/restore.py:245
+#, python-format
+msgid "Datei „%(name)s“ fehlt im Archiv."
+msgstr "File “%(name)s” is missing from the archive."
+
+#: Collection_Management_System/runtime_settings.py:83
 msgid "Wartungsmodus"
 msgstr "Maintenance mode"
 
-#: Collection_Management_System/runtime_settings.py:82
+#: Collection_Management_System/runtime_settings.py:84
 msgid ""
 "Wenn aktiv, sehen normale Benutzer nur eine Wartungsseite. Administratoren "
 "können weiterarbeiten."
@@ -606,11 +931,11 @@ msgstr ""
 "If enabled, regular users only see a maintenance page. Administrators can "
 "keep working."
 
-#: Collection_Management_System/runtime_settings.py:88
+#: Collection_Management_System/runtime_settings.py:90
 msgid "Gegenstände pro Seite"
 msgstr "Items per page"
 
-#: Collection_Management_System/runtime_settings.py:89
+#: Collection_Management_System/runtime_settings.py:91
 msgid ""
 "Seitengröße der Gegenstandstabelle einer Sammlung. Benutzer können dies im "
 "Profil für sich überschreiben."
@@ -618,22 +943,22 @@ msgstr ""
 "Page size of a collection’s item table. Users can override this for "
 "themselves in their profile."
 
-#: Collection_Management_System/runtime_settings.py:96
+#: Collection_Management_System/runtime_settings.py:98
 msgid "Leihfrist ohne Rückgabedatum (Tage)"
 msgstr "Loan period without a due date (days)"
 
-#: Collection_Management_System/runtime_settings.py:97
+#: Collection_Management_System/runtime_settings.py:99
 msgid ""
 "Nach so vielen Tagen gilt eine Ausleihe ohne vereinbartes Rückgabedatum als "
 "überfällig."
 msgstr ""
 "After this many days, a loan without an agreed return date counts as overdue."
 
-#: Collection_Management_System/runtime_settings.py:103
+#: Collection_Management_System/runtime_settings.py:105
 msgid "JSON-API aktivieren"
 msgstr "Enable JSON API"
 
-#: Collection_Management_System/runtime_settings.py:104
+#: Collection_Management_System/runtime_settings.py:106
 msgid ""
 "Zugriff auf /api/… mit persönlichen API-Tokens (im Profil erstellbar). Aus = "
 "alle API-Anfragen werden abgelehnt."
@@ -641,11 +966,11 @@ msgstr ""
 "Access to /api/… with personal API tokens (created on the profile page). Off "
 "= all API requests are rejected."
 
-#: Collection_Management_System/runtime_settings.py:110
+#: Collection_Management_System/runtime_settings.py:112
 msgid "Erinnerungen für überfällige Ausleihen"
 msgstr "Reminders for overdue loans"
 
-#: Collection_Management_System/runtime_settings.py:111
+#: Collection_Management_System/runtime_settings.py:113
 msgid ""
 "Der Befehl „send_loan_reminders“ (z. B. per Cron) schickt dem Besitzer der "
 "Sammlung eine E-Mail-Übersicht überfälliger Ausleihen."
@@ -653,20 +978,20 @@ msgstr ""
 "The “send_loan_reminders” command (e.g. via cron) e-mails the collection "
 "owner a digest of overdue loans."
 
-#: Collection_Management_System/runtime_settings.py:117
+#: Collection_Management_System/runtime_settings.py:119
 msgid "Erinnerungsintervall (Tage)"
 msgstr "Reminder interval (days)"
 
-#: Collection_Management_System/runtime_settings.py:118
+#: Collection_Management_System/runtime_settings.py:120
 msgid ""
 "Frühestens nach so vielen Tagen wird für dieselbe Ausleihe erneut erinnert."
 msgstr "The same loan is reminded again after this many days at the earliest."
 
-#: Collection_Management_System/runtime_settings.py:124
+#: Collection_Management_System/runtime_settings.py:126
 msgid "Papierkorb-Aufbewahrung (Tage)"
 msgstr "Trash retention (days)"
 
-#: Collection_Management_System/runtime_settings.py:125
+#: Collection_Management_System/runtime_settings.py:127
 msgid ""
 "Gelöschte Gegenstände bleiben so lange im Papierkorb und werden danach "
 "endgültig entfernt."
@@ -674,11 +999,11 @@ msgstr ""
 "Deleted items stay in the trash for this long and are then removed "
 "permanently."
 
-#: Collection_Management_System/runtime_settings.py:131
+#: Collection_Management_System/runtime_settings.py:133
 msgid "Registrierung erlauben"
 msgstr "Allow registration"
 
-#: Collection_Management_System/runtime_settings.py:132
+#: Collection_Management_System/runtime_settings.py:134
 msgid ""
 "Wenn deaktiviert, können keine neuen Konten angelegt werden — die "
 "Registrierungsseite ist geschlossen."
@@ -686,11 +1011,11 @@ msgstr ""
 "If disabled, no new accounts can be created — the registration page is "
 "closed."
 
-#: Collection_Management_System/runtime_settings.py:138
+#: Collection_Management_System/runtime_settings.py:140
 msgid "Registrierungen automatisch freigeben"
 msgstr "Approve registrations automatically"
 
-#: Collection_Management_System/runtime_settings.py:139
+#: Collection_Management_System/runtime_settings.py:141
 msgid ""
 "Wenn aktiv, können sich neue Konten sofort anmelden — ohne Freigabe durch "
 "einen Administrator."
@@ -698,11 +1023,11 @@ msgstr ""
 "If enabled, new accounts can sign in immediately — without administrator "
 "approval."
 
-#: Collection_Management_System/runtime_settings.py:145
+#: Collection_Management_System/runtime_settings.py:147
 msgid "Admins bei neuer Registrierung benachrichtigen"
 msgstr "Notify admins about new registrations"
 
-#: Collection_Management_System/runtime_settings.py:146
+#: Collection_Management_System/runtime_settings.py:148
 msgid ""
 "Sendet eine E-Mail an alle Administratoren, wenn eine neue Registrierung auf "
 "Freigabe wartet."
@@ -710,11 +1035,11 @@ msgstr ""
 "Sends an e-mail to all administrators when a new registration awaits "
 "approval."
 
-#: Collection_Management_System/runtime_settings.py:152
+#: Collection_Management_System/runtime_settings.py:154
 msgid "Ankündigungsbanner"
 msgstr "Announcement banner"
 
-#: Collection_Management_System/runtime_settings.py:153
+#: Collection_Management_System/runtime_settings.py:155
 msgid ""
 "Wird auf jeder Seite oben angezeigt, z. B. für Wartungshinweise. Leer = kein "
 "Banner."
@@ -722,158 +1047,216 @@ msgstr ""
 "Shown at the top of every page, e.g. for maintenance notices. Empty = no "
 "banner."
 
-#: Collection_Management_System/runtime_settings.py:159
+#: Collection_Management_System/runtime_settings.py:161
 msgid "Stil des Ankündigungsbanners"
 msgstr "Announcement banner style"
 
-#: Collection_Management_System/runtime_settings.py:160
+#: Collection_Management_System/runtime_settings.py:162
 msgid "Farbe des Banners."
 msgstr "Colour of the banner."
 
-#: Collection_Management_System/runtime_settings.py:163
+#: Collection_Management_System/runtime_settings.py:165
 msgid "Blau (Info)"
 msgstr "Blue (info)"
 
-#: Collection_Management_System/runtime_settings.py:164
+#: Collection_Management_System/runtime_settings.py:166
 msgid "Gelb (Warnung)"
 msgstr "Yellow (warning)"
 
-#: Collection_Management_System/runtime_settings.py:165
+#: Collection_Management_System/runtime_settings.py:167
 msgid "Rot (Wichtig)"
 msgstr "Red (important)"
 
-#: Collection_Management_System/runtime_settings.py:166
+#: Collection_Management_System/runtime_settings.py:168
 msgid "Grün (Erfolg)"
 msgstr "Green (success)"
 
-#: Collection_Management_System/runtime_settings.py:171
+#: Collection_Management_System/runtime_settings.py:173
 msgid "Maximale Upload-Größe (MB)"
 msgstr "Maximum upload size (MB)"
 
-#: Collection_Management_System/runtime_settings.py:172
+#: Collection_Management_System/runtime_settings.py:174
 msgid "Obergrenze pro hochgeladener Datei (Bilder, Belege, Dokumente)."
 msgstr "Upper limit per uploaded file (images, receipts, documents)."
 
-#: Collection_Management_System/runtime_settings.py:177
+#: Collection_Management_System/runtime_settings.py:179
 msgid "Erlaubte Dateiendungen"
 msgstr "Allowed file extensions"
 
-#: Collection_Management_System/runtime_settings.py:178
+#: Collection_Management_System/runtime_settings.py:180
 msgid "Kommagetrennt, z. B. „pdf, jpg, png“. Leer = alle Endungen erlaubt."
 msgstr "Comma-separated, e.g. “pdf, jpg, png”. Empty = all extensions allowed."
 
-#: Collection_Management_System/runtime_settings.py:183
+#: Collection_Management_System/runtime_settings.py:185
 msgid "Standardwährung"
 msgstr "Default currency"
 
-#: Collection_Management_System/runtime_settings.py:184
+#: Collection_Management_System/runtime_settings.py:186
 msgid "Währungscode (ISO 4217, z. B. EUR) für neue Preisfelder."
 msgstr "Currency code (ISO 4217, e.g. EUR) for new price fields."
 
-#: Collection_Management_System/runtime_settings.py:189
+#: Collection_Management_System/runtime_settings.py:191
 msgid "Timeout externe Datenbanken (Sekunden)"
 msgstr "External database timeout (seconds)"
 
-#: Collection_Management_System/runtime_settings.py:190
+#: Collection_Management_System/runtime_settings.py:192
 msgid "Maximale Wartezeit für Anfragen an Open Library, Google Books usw."
 msgstr "Maximum wait time for requests to Open Library, Google Books, etc."
 
-#: Collection_Management_System/runtime_settings.py:196
+#: Collection_Management_System/runtime_settings.py:198
+msgid "TMDb-API-Schlüssel (Filme & Serien)"
+msgstr "TMDb API key (films & series)"
+
+#: Collection_Management_System/runtime_settings.py:199
+msgid ""
+"Kostenloser API-Schlüssel von themoviedb.org — schaltet die Film-/"
+"Seriensuche frei. Leer = TMDb wird nicht abgefragt."
+msgstr "Free API key from themoviedb.org — enables the film/series search. Empty = TMDb is not queried."
+
+#: Collection_Management_System/runtime_settings.py:205
+msgid "RAWG-API-Schlüssel (Videospiele)"
+msgstr "RAWG API key (video games)"
+
+#: Collection_Management_System/runtime_settings.py:206
+msgid ""
+"Kostenloser API-Schlüssel von rawg.io — schaltet die Videospielsuche frei. "
+"Leer = RAWG wird nicht abgefragt."
+msgstr "Free API key from rawg.io — enables the video-game search. Empty = RAWG is not queried."
+
+#: Collection_Management_System/runtime_settings.py:212
+msgid "Impressum: Betreiber"
+msgstr "Imprint: operator"
+
+#: Collection_Management_System/runtime_settings.py:213
+msgid ""
+"Name des Betreibers/Verantwortlichen für Impressum und Datenschutzerklärung."
+msgstr "Name of the operator/controller for the imprint and privacy policy."
+
+#: Collection_Management_System/runtime_settings.py:219
+msgid "Impressum: Anschrift"
+msgstr "Imprint: address"
+
+#: Collection_Management_System/runtime_settings.py:220
+msgid "Postanschrift des Betreibers (mehrzeilig möglich)."
+msgstr "Postal address of the operator (may span several lines)."
+
+#: Collection_Management_System/runtime_settings.py:225
+msgid "Impressum: Kontakt-E-Mail"
+msgstr "Imprint: contact e-mail"
+
+#: Collection_Management_System/runtime_settings.py:226
+msgid "E-Mail-Adresse für Anfragen zu Impressum und Datenschutz."
+msgstr "E-mail address for imprint and privacy enquiries."
+
+#: Collection_Management_System/runtime_settings.py:231
 msgid "Maximale Treffer der globalen Suche"
 msgstr "Maximum results of the global search"
 
-#: Collection_Management_System/runtime_settings.py:197
+#: Collection_Management_System/runtime_settings.py:232
 msgid "Obergrenze der Gegenstands-Treffer auf der Suchseite."
 msgstr "Upper limit of item hits on the search page."
 
 #: Collection_Management_System/services.py:14
+#: Collection_Management_System/services.py:144
 msgid "Name / Bezeichnung"
 msgstr "Name / label"
 
 #: Collection_Management_System/services.py:15
-#: Collection_Management_System/services.py:66
-#: Collection_Management_System/services.py:82
-#: Collection_Management_System/services.py:97
-#: Collection_Management_System/services.py:112
+#: Collection_Management_System/services.py:68
+#: Collection_Management_System/services.py:86
+#: Collection_Management_System/services.py:103
+#: Collection_Management_System/services.py:119
+#: Collection_Management_System/services.py:136
+#: Collection_Management_System/services.py:150
 msgid "Ort / Platz"
 msgstr "Location / place"
 
 #: Collection_Management_System/services.py:16
+#: Collection_Management_System/services.py:151
 msgid "Kaufdatum"
 msgstr "Purchase date"
 
 #: Collection_Management_System/services.py:17
-#: Collection_Management_System/services.py:67
-#: Collection_Management_System/services.py:83
-#: Collection_Management_System/services.py:98
-#: Collection_Management_System/services.py:113
+#: Collection_Management_System/services.py:69
+#: Collection_Management_System/services.py:87
+#: Collection_Management_System/services.py:104
+#: Collection_Management_System/services.py:120
+#: Collection_Management_System/services.py:137
+#: Collection_Management_System/services.py:152
 msgid "Preis"
 msgstr "Price"
 
 #: Collection_Management_System/services.py:18
+#: Collection_Management_System/services.py:153
 msgid "Beleg"
 msgstr "Receipt"
 
-#: Collection_Management_System/services.py:54
-msgid "Bücher"
-msgstr "Books"
+#: Collection_Management_System/services.py:60
+#: Collection_Management_System/services.py:128
+msgid "Verlag"
+msgstr "Publisher"
 
-#: Collection_Management_System/services.py:65
+#: Collection_Management_System/services.py:67
 msgid "Cover (URL)"
 msgstr "Cover (URL)"
 
-#: Collection_Management_System/services.py:71
-msgid "Filme & Serien"
-msgstr "Movies & TV shows"
-
-#: Collection_Management_System/services.py:74
-msgid "Regie"
-msgstr "Director"
-
-#: Collection_Management_System/services.py:76
-#: Collection_Management_System/services.py:92
+#: Collection_Management_System/services.py:79
+#: Collection_Management_System/services.py:98
 msgid "Medium"
 msgstr "Medium"
 
-#: Collection_Management_System/services.py:78
+#: Collection_Management_System/services.py:81
 msgid "Laufzeit (Minuten)"
 msgstr "Runtime (minutes)"
 
-#: Collection_Management_System/services.py:79
-#: Collection_Management_System/services.py:94
-#: Collection_Management_System/services.py:107
+#: Collection_Management_System/services.py:82
+#: Collection_Management_System/services.py:100
+#: Collection_Management_System/services.py:114
 msgid "Genre"
 msgstr "Genre"
 
-#: Collection_Management_System/services.py:81
-#: Collection_Management_System/services.py:96
-#: Collection_Management_System/services.py:111
+#: Collection_Management_System/services.py:85
+#: Collection_Management_System/services.py:102
+#: Collection_Management_System/services.py:118
+#: Collection_Management_System/services.py:135
 msgid "Cover / Bild"
 msgstr "Cover / image"
 
-#: Collection_Management_System/services.py:87
-msgid "Musik / Tonträger"
-msgstr "Music / recordings"
-
-#: Collection_Management_System/services.py:89
+#: Collection_Management_System/services.py:94
 msgid "Titel / Album"
 msgstr "Title / album"
 
-#: Collection_Management_System/services.py:90
+#: Collection_Management_System/services.py:95
 msgid "Interpret"
 msgstr "Artist"
 
-#: Collection_Management_System/services.py:102
-msgid "Videospiele"
-msgstr "Video games"
+#: Collection_Management_System/services.py:96
+msgid "Label"
+msgstr "Label"
 
-#: Collection_Management_System/services.py:105
+#: Collection_Management_System/services.py:112
 msgid "Plattform"
 msgstr "Platform"
 
-#: Collection_Management_System/services.py:108
+#: Collection_Management_System/services.py:115
 msgid "Altersfreigabe"
 msgstr "Age rating"
+
+#: Collection_Management_System/services.py:131
+msgid "Spieldauer (Minuten)"
+msgstr "Playing time (minutes)"
+
+#: Collection_Management_System/services.py:132
+msgid "Kategorien"
+msgstr "Categories"
+
+#: Collection_Management_System/services.py:141
+msgid "Sonstiges / Gemischt"
+msgstr "Other / mixed"
+
+#: Collection_Management_System/services.py:146
+msgid "Kategorie"
+msgstr "Category"
 
 #: Collection_Management_System/statistics.py:68
 msgid "Ohne Art"
@@ -885,8 +1268,8 @@ msgstr "No type"
 #: templates/collections/collection_list.html:3
 #: templates/collections/collection_list.html:6
 #: templates/collections/item_detail.html:6
-#: templates/collections/search.html:20 templates/collections/shares.html:6
-#: templates/collections/statistics.html:6
+#: templates/collections/restore.html:8 templates/collections/search.html:20
+#: templates/collections/shares.html:6 templates/collections/statistics.html:6
 msgid "Sammlungen"
 msgstr "Collections"
 
@@ -899,12 +1282,12 @@ msgstr "Collections"
 msgid "Speichern"
 msgstr "Save"
 
-#: Collection_Management_System/views.py:129
+#: Collection_Management_System/views.py:138
 #, python-format
 msgid "Sammlung erstellt — Felder aus „%(name)s“ übernommen."
 msgstr "Collection created — fields copied from “%(name)s”."
 
-#: Collection_Management_System/views.py:133
+#: Collection_Management_System/views.py:142
 #, python-format
 msgid ""
 "Sammlung erstellt — Vorlage „%(label)s“ angelegt. Felder lassen sich "
@@ -913,30 +1296,30 @@ msgstr ""
 "Collection created — “%(label)s” template applied. Fields can be adjusted at "
 "any time."
 
-#: Collection_Management_System/views.py:138
+#: Collection_Management_System/views.py:147
 msgid "Sammlung erstellt — Standardfelder wurden angelegt."
 msgstr "Collection created — standard fields have been added."
 
-#: Collection_Management_System/views.py:233
+#: Collection_Management_System/views.py:251
 msgid "Sammlung aktualisiert."
 msgstr "Collection updated."
 
-#: Collection_Management_System/views.py:239
+#: Collection_Management_System/views.py:257
 #, python-format
 msgid "Sammlung bearbeiten: %(name)s"
 msgstr "Edit collection: %(name)s"
 
-#: Collection_Management_System/views.py:249
+#: Collection_Management_System/views.py:267
 #, python-format
 msgid "Sammlung „%(name)s“ wurde gelöscht."
 msgstr "Collection “%(name)s” was deleted."
 
-#: Collection_Management_System/views.py:253
+#: Collection_Management_System/views.py:271
 #, python-format
 msgid "Sammlung „%(name)s“"
 msgstr "Collection “%(name)s”"
 
-#: Collection_Management_System/views.py:254
+#: Collection_Management_System/views.py:272
 msgid ""
 "Alle Gegenstände, Felder, Arten, Ausleihen und Freigaben dieser Sammlung "
 "werden unwiderruflich gelöscht."
@@ -944,176 +1327,228 @@ msgstr ""
 "All items, fields, types, loans and shares of this collection will be "
 "deleted irreversibly."
 
-#: Collection_Management_System/views.py:272
+#: Collection_Management_System/views.py:290
 msgid "Einstellungen gespeichert — sie gelten ab sofort."
 msgstr "Settings saved — they take effect immediately."
 
-#: Collection_Management_System/views.py:321
+#: Collection_Management_System/views.py:342
 msgid "Sammlung freigegeben."
 msgstr "Collection shared."
 
-#: Collection_Management_System/views.py:321
+#: Collection_Management_System/views.py:342
 msgid "Freigabe aktualisiert."
 msgstr "Share updated."
 
-#: Collection_Management_System/views.py:339
+#: Collection_Management_System/views.py:362
 #, python-format
 msgid "Freigabe für %(user)s entfernt."
 msgstr "Share for %(user)s removed."
 
-#: Collection_Management_System/views.py:352
+#: Collection_Management_System/views.py:394
 msgid "Feld hinzugefügt."
 msgstr "Field added."
 
-#: Collection_Management_System/views.py:357
+#: Collection_Management_System/views.py:399
 msgid "Neues Feld"
 msgstr "New field"
 
-#: Collection_Management_System/views.py:368
+#: Collection_Management_System/views.py:410
 msgid "Feld aktualisiert."
 msgstr "Field updated."
 
-#: Collection_Management_System/views.py:374
+#: Collection_Management_System/views.py:416
 #, python-format
 msgid "Feld bearbeiten: %(label)s"
 msgstr "Edit field: %(label)s"
 
-#: Collection_Management_System/views.py:411
+#: Collection_Management_System/views.py:453
 #, python-format
 msgid "Feld „%(label)s“ und zugehörige Daten wurden entfernt."
 msgstr "Field “%(label)s” and its data have been removed."
 
-#: Collection_Management_System/views.py:414
+#: Collection_Management_System/views.py:456
 #, python-format
 msgid "Feld „%(label)s“"
 msgstr "Field “%(label)s”"
 
-#: Collection_Management_System/views.py:415
+#: Collection_Management_System/views.py:457
 msgid ""
 "Alle in diesem Feld gespeicherten Werte werden bei allen Gegenständen "
 "gelöscht."
 msgstr "All values stored in this field will be deleted on every item."
 
-#: Collection_Management_System/views.py:428
+#: Collection_Management_System/views.py:470
 msgid "Art hinzugefügt."
 msgstr "Type added."
 
-#: Collection_Management_System/views.py:433
+#: Collection_Management_System/views.py:475
 msgid "Neue Art"
 msgstr "New type"
 
-#: Collection_Management_System/views.py:484 accounts/throttling.py:89
+#: Collection_Management_System/views.py:542 accounts/throttling.py:89
 msgid ""
 "Zu viele Anfragen. Bitte warte einige Minuten und versuche es dann erneut."
 msgstr "Too many requests. Please wait a few minutes and try again."
 
-#: Collection_Management_System/views.py:501
-#: Collection_Management_System/views.py:556
+#: Collection_Management_System/views.py:560
+#: Collection_Management_System/views.py:615
 msgid "Kein Feld für die automatische Befüllung zugeordnet."
 msgstr "No field is mapped for automatic filling."
 
-#: Collection_Management_System/views.py:506
-#: Collection_Management_System/views.py:560
+#: Collection_Management_System/views.py:565
+#: Collection_Management_System/views.py:619
 msgid "Kein Suchbegriff übergeben."
 msgstr "No search term provided."
 
-#: Collection_Management_System/views.py:606
+#: Collection_Management_System/views.py:670
+msgid "Bitte einen Namen für die Ansicht angeben."
+msgstr "Please provide a name for the view."
+
+#: Collection_Management_System/views.py:676
+#, python-format
+msgid "Ansicht „%(name)s“ gespeichert."
+msgstr "View “%(name)s” saved."
+
+#: Collection_Management_System/views.py:678
+#, python-format
+msgid "Ansicht „%(name)s“ aktualisiert."
+msgstr "View “%(name)s” updated."
+
+#: Collection_Management_System/views.py:690
+#, python-format
+msgid "Ansicht „%(name)s“ gelöscht."
+msgstr "View “%(name)s” deleted."
+
+#: Collection_Management_System/views.py:716
+#, python-format
+msgid "Maximal %(count)s Fotos pro Gegenstand."
+msgstr "At most %(count)s photos per item."
+
+#: Collection_Management_System/views.py:722
+#, python-format
+msgid "„%(name)s“ ist zu groß (maximal %(mb)s MB)."
+msgstr "“%(name)s” is too large (at most %(mb)s MB)."
+
+#: Collection_Management_System/views.py:726
+#, python-format
+msgid "Dateityp „%(ext)s“ ist nicht erlaubt."
+msgstr "File type “%(ext)s” is not allowed."
+
+#: Collection_Management_System/views.py:732
+#, python-format
+msgid "„%(name)s“ ist kein gültiges Bild."
+msgstr "“%(name)s” is not a valid image."
+
+#: Collection_Management_System/views.py:738
+#, python-format
+msgid "%(count)s Foto(s) hinzugefügt."
+msgstr "%(count)s photo(s) added."
+
+#: Collection_Management_System/views.py:740
+msgid "Keine Dateien ausgewählt."
+msgstr "No files selected."
+
+#: Collection_Management_System/views.py:752
+msgid "Foto entfernt."
+msgstr "Photo removed."
+
+#: Collection_Management_System/views.py:765
 msgid "Gegenstand hinzugefügt."
 msgstr "Item added."
 
-#: Collection_Management_System/views.py:611
+#: Collection_Management_System/views.py:770
 msgid "Neuer Gegenstand"
 msgstr "New item"
 
-#: Collection_Management_System/views.py:623
+#: Collection_Management_System/views.py:782
 msgid "Gegenstand aktualisiert."
 msgstr "Item updated."
 
-#: Collection_Management_System/views.py:628
+#: Collection_Management_System/views.py:787
 msgid "Gegenstand bearbeiten"
 msgstr "Edit item"
 
-#: Collection_Management_System/views.py:646
+#: Collection_Management_System/views.py:805
 msgid "Bitte angeben, an wen verliehen wird."
 msgstr "Please state who it is lent to."
 
-#: Collection_Management_System/views.py:648
+#: Collection_Management_System/views.py:807
 msgid "Dieser Gegenstand ist bereits verliehen."
 msgstr "This item is already lent out."
 
-#: Collection_Management_System/views.py:653
+#: Collection_Management_System/views.py:812
 msgid "Als verliehen markiert."
 msgstr "Marked as lent."
 
-#: Collection_Management_System/views.py:666
+#: Collection_Management_System/views.py:825
 msgid "Rückgabe vermerkt."
 msgstr "Return recorded."
 
-#: Collection_Management_System/views.py:697
+#: Collection_Management_System/views.py:856
 msgid "Bitte eine .xlsx- oder .csv-Datei auswählen."
 msgstr "Please choose an .xlsx or .csv file."
 
-#: Collection_Management_System/views.py:706
+#: Collection_Management_System/views.py:865
 msgid "Die Datei enthält keine Datenzeilen oder konnte nicht gelesen werden."
 msgstr "The file contains no data rows or could not be read."
 
-#: Collection_Management_System/views.py:709
+#: Collection_Management_System/views.py:868
 #: templates/collections/import.html:30
 #, python-format
 msgid "%(count)s Gegenstände importiert."
 msgstr "%(count)s items imported."
 
-#: Collection_Management_System/views.py:727
+#: Collection_Management_System/views.py:886
 msgid "Kein Code übergeben."
 msgstr "No code given."
 
-#: Collection_Management_System/views.py:751
+#: Collection_Management_System/views.py:910
 #, python-format
 msgid "Mehrere Treffer für „%(code)s“ – Liste wurde gefiltert."
 msgstr "Multiple matches for “%(code)s” – the list has been filtered."
 
-#: Collection_Management_System/views.py:753
+#: Collection_Management_System/views.py:912
 #, python-format
 msgid "Kein Gegenstand mit Code „%(code)s“ gefunden."
 msgstr "No item found for code “%(code)s”."
 
-#: Collection_Management_System/views.py:788
+#: Collection_Management_System/views.py:957
 msgid "Keine Gegenstände ausgewählt."
 msgstr "No items selected."
 
-#: Collection_Management_System/views.py:791
+#: Collection_Management_System/views.py:960
 #, python-format
 msgid "%(count)s Gegenstände in den Papierkorb verschoben."
 msgstr "%(count)s items moved to the trash."
 
-#: Collection_Management_System/views.py:799
+#: Collection_Management_System/views.py:968
 #, python-format
 msgid "Art „%(type)s“ für %(count)s Gegenstände gesetzt."
 msgstr "Type “%(type)s” set on %(count)s items."
 
-#: Collection_Management_System/views.py:802
+#: Collection_Management_System/views.py:971
 #, python-format
 msgid "Art bei %(count)s Gegenständen entfernt."
 msgstr "Type removed from %(count)s items."
 
-#: Collection_Management_System/views.py:804
+#: Collection_Management_System/views.py:973
 msgid "Unbekannte Aktion."
 msgstr "Unknown action."
 
-#: Collection_Management_System/views.py:840
+#: Collection_Management_System/views.py:1012
 msgid "Gegenstand dupliziert — du bearbeitest jetzt die Kopie."
 msgstr "Item duplicated — you are now editing the copy."
 
-#: Collection_Management_System/views.py:851
+#: Collection_Management_System/views.py:1023
 msgid "Gegenstand in den Papierkorb verschoben."
 msgstr "Item moved to the trash."
 
-#: Collection_Management_System/views.py:854
+#: Collection_Management_System/views.py:1026
 #, python-format
 msgid "Gegenstand „%(item)s“"
 msgstr "Item “%(item)s”"
 
-#: Collection_Management_System/views.py:855
+#: Collection_Management_System/views.py:1027
 msgid ""
 "Der Gegenstand wandert in den Papierkorb und wird nach Ablauf der "
 "Aufbewahrungsfrist endgültig gelöscht."
@@ -1121,20 +1556,43 @@ msgstr ""
 "The item goes to the trash and is permanently deleted once the retention "
 "period expires."
 
-#: Collection_Management_System/views.py:895
+#: Collection_Management_System/views.py:1067
 #, python-format
 msgid "Gegenstand „%(item)s“ wiederhergestellt."
 msgstr "Item “%(item)s” restored."
 
-#: Collection_Management_System/views.py:907
+#: Collection_Management_System/views.py:1079
 #, python-format
 msgid "Gegenstand „%(item)s“ endgültig gelöscht."
 msgstr "Item “%(item)s” permanently deleted."
 
-#: Collection_Management_System/views.py:918
+#: Collection_Management_System/views.py:1090
 #, python-format
 msgid "Papierkorb geleert (%(count)s Gegenstände)."
 msgstr "Trash emptied (%(count)s items)."
+
+#: Collection_Management_System/views.py:1173
+msgid "Zu viele Sicherungs-Anfragen. Bitte versuche es später erneut."
+msgstr "Too many backup requests. Please try again later."
+
+#: Collection_Management_System/views.py:1192
+msgid "Zu viele Wiederherstellungen. Bitte versuche es später erneut."
+msgstr "Too many restore attempts. Please try again later."
+
+#: Collection_Management_System/views.py:1196
+msgid "Bitte eine .zip-Sicherungsdatei auswählen."
+msgstr "Please choose a .zip backup file."
+
+#: Collection_Management_System/views.py:1198
+msgid "Die Datei ist zu groß."
+msgstr "The file is too large."
+
+#: Collection_Management_System/views.py:1209
+#, python-format
+msgid ""
+"Sammlung „%(name)s“ wiederhergestellt: %(items)s Gegenstände, %(files)s "
+"Dateien."
+msgstr "Collection “%(name)s” restored: %(items)s items, %(files)s files."
 
 #: accounts/admin.py:63
 #, python-format
@@ -1187,7 +1645,7 @@ msgstr "Rejected"
 msgid "Anzeigename"
 msgstr "Display name"
 
-#: accounts/models.py:40 templates/base.html:132
+#: accounts/models.py:40 templates/base.html:183
 msgid "Einstellungen"
 msgstr "Settings"
 
@@ -1208,11 +1666,11 @@ msgid "Entschieden von"
 msgstr "Decided by"
 
 #: accounts/models.py:109 accounts/models.py:139
-#: templates/accounts/profile.html:37 templates/accounts/profile.html:85
+#: templates/accounts/profile.html:37 templates/accounts/profile.html:96
 msgid "Zuletzt verwendet"
 msgstr "Last used"
 
-#: accounts/models.py:113 accounts/passkeys.py:116
+#: accounts/models.py:113 accounts/passkeys.py:94
 msgid "Passkey"
 msgstr "Passkey"
 
@@ -1220,44 +1678,44 @@ msgstr "Passkey"
 msgid "Passkeys"
 msgstr "Passkeys"
 
-#: accounts/models.py:143 accounts/views.py:101
+#: accounts/models.py:143 accounts/views.py:113
 msgid "API-Token"
 msgstr "API token"
 
-#: accounts/models.py:144 templates/accounts/profile.html:65
+#: accounts/models.py:144 templates/accounts/profile.html:76
 msgid "API-Tokens"
 msgstr "API tokens"
 
-#: accounts/passkeys.py:104
+#: accounts/passkeys.py:133
 msgid "Keine laufende Passkey-Registrierung."
 msgstr "No passkey registration in progress."
 
-#: accounts/passkeys.py:114
+#: accounts/passkeys.py:143
 msgid "Passkey-Registrierung fehlgeschlagen."
 msgstr "Passkey registration failed."
 
-#: accounts/passkeys.py:145
+#: accounts/passkeys.py:175
 msgid "Keine laufende Passkey-Anmeldung."
 msgstr "No passkey sign-in in progress."
 
-#: accounts/passkeys.py:155 accounts/passkeys.py:171
+#: accounts/passkeys.py:185 accounts/passkeys.py:201
 msgid "Passkey-Anmeldung fehlgeschlagen."
 msgstr "Passkey sign-in failed."
 
-#: accounts/passkeys.py:178
+#: accounts/passkeys.py:208
 msgid "Dieses Konto ist nicht freigegeben oder deaktiviert."
 msgstr "This account has not been approved or is deactivated."
 
-#: accounts/passkeys.py:201
+#: accounts/passkeys.py:231
 #, python-format
 msgid "Passkey „%(name)s“ entfernt."
 msgstr "Passkey “%(name)s” removed."
 
-#: accounts/views.py:27
+#: accounts/views.py:29
 msgid "CMS: Neue Registrierung wartet auf Freigabe"
 msgstr "CMS: New registration awaiting approval"
 
-#: accounts/views.py:28
+#: accounts/views.py:30
 #, python-format
 msgid ""
 "Der Benutzer „%(username)s“ (%(email)s) hat sich registriert und wartet auf "
@@ -1270,15 +1728,15 @@ msgstr ""
 "\n"
 "Approve or reject: %(url)s"
 
-#: accounts/views.py:51
+#: accounts/views.py:53
 msgid "Die Registrierung ist derzeit geschlossen."
 msgstr "Registration is currently closed."
 
-#: accounts/views.py:60
+#: accounts/views.py:62
 msgid "Danke für deine Registrierung! Du kannst dich jetzt anmelden."
 msgstr "Thanks for registering! You can sign in now."
 
-#: accounts/views.py:66
+#: accounts/views.py:78
 msgid ""
 "Danke für deine Registrierung! Dein Konto muss noch von einem Administrator "
 "freigegeben werden. Du kannst dich anmelden, sobald die Freigabe erfolgt ist."
@@ -1286,11 +1744,11 @@ msgstr ""
 "Thanks for registering! Your account still needs to be approved by an "
 "administrator. You can sign in as soon as it has been approved."
 
-#: accounts/views.py:85
+#: accounts/views.py:97
 msgid "Profil gespeichert."
 msgstr "Profile saved."
 
-#: accounts/views.py:105
+#: accounts/views.py:117
 #, python-format
 msgid ""
 "Token „%(name)s“ erstellt: %(key)s — jetzt kopieren, er wird nur dieses eine "
@@ -1298,25 +1756,41 @@ msgid ""
 msgstr ""
 "Token “%(name)s” created: %(key)s — copy it now, it is shown only this once."
 
-#: accounts/views.py:120
+#: accounts/views.py:132
 #, python-format
 msgid "Token „%(name)s“ widerrufen."
 msgstr "Token “%(name)s” revoked."
 
-#: accounts/views.py:132
+#: accounts/views.py:152
+msgid "Zu viele Export-Anfragen. Bitte versuche es später erneut."
+msgstr "Too many export requests. Please try again later."
+
+#: accounts/views.py:214
+msgid "Das Passwort ist nicht korrekt."
+msgstr "The password is not correct."
+
+#: accounts/views.py:217
+msgid "Bitte gib zur Bestätigung deinen Benutzernamen exakt ein."
+msgstr "Please type your username exactly to confirm."
+
+#: accounts/views.py:229
+msgid "Dein Konto und alle deine Sammlungen wurden endgültig gelöscht."
+msgstr "Your account and all your collections have been permanently deleted."
+
+#: accounts/views.py:249
 msgid "Dein Passwort wurde geändert."
 msgstr "Your password has been changed."
 
-#: cms/settings.py:202
+#: cms/settings.py:206
 msgid "Deutsch"
 msgstr "German"
 
-#: cms/settings.py:203
+#: cms/settings.py:207
 msgid "Englisch"
 msgstr "English"
 
 #: templates/accounts/profile.html:3 templates/accounts/profile.html:9
-#: templates/base.html:93
+#: templates/base.html:144
 msgid "Mein Profil"
 msgstr "My profile"
 
@@ -1327,8 +1801,10 @@ msgstr "My profile"
 #: templates/collections/field_form.html:18
 #: templates/collections/item_form.html:37
 #: templates/collections/item_form.html:75
+#: templates/collections/restore.html:29
 #: templates/collections/site_settings.html:19
 #: templates/collections/type_form.html:18
+#: templates/registration/account_delete.html:50
 #: templates/registration/password_change.html:26
 msgid "Abbrechen"
 msgstr "Cancel"
@@ -1343,7 +1819,7 @@ msgstr ""
 "Sign in without a password – with your fingerprint, face, device PIN or a "
 "security key. The secret key never leaves your device."
 
-#: templates/accounts/profile.html:36 templates/accounts/profile.html:84
+#: templates/accounts/profile.html:36 templates/accounts/profile.html:95
 msgid "Erstellt"
 msgstr "Created"
 
@@ -1355,15 +1831,32 @@ msgstr "Really remove this passkey?"
 msgid "Entfernen"
 msgstr "Remove"
 
-#: templates/accounts/profile.html:52
-msgid "Bezeichnung, z. B. Handy oder YubiKey"
-msgstr "Name, e.g. phone or YubiKey"
+#: templates/accounts/profile.html:54 templates/registration/login.html:37
+#, python-format
+msgid ""
+"Passkeys funktionieren nicht über die IP-Adresse. Öffne die Seite dafür über "
+"den Gerätenamen: <a href=\"%(url)s\" class=\"alert-link\">%(url)s</a>"
+msgstr ""
+"Passkeys do not work via the IP address. Open the page through the device "
+"name instead: <a href=\"%(url)s\" class=\"alert-link\">%(url)s</a>"
 
-#: templates/accounts/profile.html:56
+#: templates/accounts/profile.html:61
 msgid "Passkey hinzufügen"
 msgstr "Add passkey"
 
-#: templates/accounts/profile.html:68
+#: templates/accounts/profile.html:64
+msgid "Name (optional, sonst z. B. „iPhone“)"
+msgstr "Name (optional, defaults to e.g. “iPhone”)"
+
+#: templates/accounts/profile.html:67
+msgid ""
+"Ein Tipp auf den Knopf genügt – dein Gerät fragt direkt nach Face ID, "
+"Fingerabdruck oder PIN."
+msgstr ""
+"One tap on the button is enough – your device asks directly for Face ID, "
+"fingerprint or PIN."
+
+#: templates/accounts/profile.html:79
 msgid ""
 "Persönliche Zugangsschlüssel für die JSON-API\n"
 "                    (Header „Authorization: Bearer &lt;token&gt;“). Der "
@@ -1373,67 +1866,125 @@ msgstr ""
 "Personal access keys for the JSON API (header “Authorization: Bearer "
 "&lt;token&gt;”). The key is shown only once, right after creation."
 
-#: templates/accounts/profile.html:74
+#: templates/accounts/profile.html:85
 msgid ""
 "Die API ist derzeit deaktiviert (Systemeinstellung „JSON-API aktivieren“)."
 msgstr "The API is currently disabled (system setting “Enable JSON API”)."
 
-#: templates/accounts/profile.html:90
+#: templates/accounts/profile.html:101
 msgid "Token wirklich widerrufen?"
 msgstr "Really revoke this token?"
 
-#: templates/accounts/profile.html:92
+#: templates/accounts/profile.html:103
 msgid "Widerrufen"
 msgstr "Revoke"
 
-#: templates/accounts/profile.html:101
+#: templates/accounts/profile.html:112
 msgid "Bezeichnung, z. B. Skript auf dem NAS"
 msgstr "Name, e.g. script on the NAS"
 
-#: templates/accounts/profile.html:103
+#: templates/accounts/profile.html:114
 msgid "Token erstellen"
 msgstr "Create token"
+
+#: templates/accounts/profile.html:122
+msgid "Deine Daten (DSGVO)"
+msgstr "Your data (GDPR)"
+
+#: templates/accounts/profile.html:124
+msgid ""
+"Du behältst die volle Kontrolle: Lade jederzeit eine\n"
+"                    vollständige Kopie deiner Daten herunter oder lösche "
+"dein Konto samt\n"
+"                    aller Sammlungen selbst — ohne Nachfragen."
+msgstr "You stay in full control: download a complete copy of your data at any time, or delete your account with all collections yourself — no questions asked."
+
+#: templates/accounts/profile.html:130
+msgid "Alle Daten exportieren (JSON)"
+msgstr "Export all data (JSON)"
+
+#: templates/accounts/profile.html:133
+msgid "Konto löschen…"
+msgstr "Delete account…"
+
+#: templates/accounts/profile.html:137 templates/pages/privacy.html:3
+#: templates/pages/privacy.html:7
+msgid "Datenschutzerklärung"
+msgstr "Privacy policy"
+
+#: templates/accounts/profile.html:138 templates/base.html:205
+#: templates/pages/imprint.html:3 templates/pages/imprint.html:7
+msgid "Impressum"
+msgstr "Imprint"
 
 #: templates/base.html:42 templates/collections/dashboard.html:3
 #: templates/collections/dashboard.html:6
 msgid "Dashboard"
 msgstr "Dashboard"
 
-#: templates/base.html:48
+#: templates/base.html:44 templates/collections/price_search.html:3
+msgid "Preissuche"
+msgstr "Price search"
+
+#: templates/base.html:49
 msgid "Überall suchen…"
 msgstr "Search everywhere…"
 
-#: templates/base.html:59
+#: templates/base.html:60
 msgid "Hell/Dunkel umschalten"
 msgstr "Toggle light/dark"
 
-#: templates/base.html:85
+#: templates/base.html:102
+#, python-format
+msgid "%(counter)s überfällige Ausleihe"
+msgid_plural "%(counter)s überfällige Ausleihen"
+msgstr[0] "%(counter)s overdue loan"
+msgstr[1] "%(counter)s overdue loans"
+
+#: templates/base.html:113
+#, python-format
+msgid "vor %(time)s"
+msgstr "%(time)s ago"
+
+#: templates/base.html:119
+msgid "Keine Benachrichtigungen."
+msgstr "No notifications."
+
+#: templates/base.html:129
+msgid "Alle als gelesen markieren"
+msgstr "Mark all as read"
+
+#: templates/base.html:136
 msgid "Hilfe"
 msgstr "Help"
 
-#: templates/base.html:98 templates/registration/password_change.html:3
+#: templates/base.html:149 templates/registration/password_change.html:3
 #: templates/registration/password_change.html:9
 msgid "Passwort ändern"
 msgstr "Change password"
 
-#: templates/base.html:114
+#: templates/base.html:165
 msgid "Abmelden"
 msgstr "Sign out"
 
-#: templates/base.html:118 templates/registration/login.html:3
+#: templates/base.html:169 templates/registration/login.html:3
 #: templates/registration/login.html:9 templates/registration/login.html:29
 #: templates/registration/register.html:30
 msgid "Anmelden"
 msgstr "Sign in"
 
-#: templates/base.html:120 templates/registration/register.html:3
+#: templates/base.html:171 templates/registration/register.html:3
 #: templates/registration/register.html:27
 msgid "Registrieren"
 msgstr "Register"
 
-#: templates/base.html:131
+#: templates/base.html:182
 msgid "Wartungsmodus aktiv — normale Benutzer sehen nur die Wartungsseite."
 msgstr "Maintenance mode active — regular users only see the maintenance page."
+
+#: templates/base.html:207
+msgid "Datenschutz"
+msgstr "Privacy"
 
 #: templates/collections/_collection_grid.html:15
 msgid "geteilt"
@@ -1465,6 +2016,7 @@ msgid "Filtern"
 msgstr "Filter"
 
 #: templates/collections/_filter_panel.html:13
+#: templates/collections/price_search.html:47
 msgid "Zurücksetzen"
 msgstr "Reset"
 
@@ -1524,7 +2076,7 @@ msgstr ""
 
 #: templates/collections/collection_detail.html:52
 #: templates/collections/search.html:34
-#: templates/collections/statistics.html:29
+#: templates/collections/statistics.html:30
 msgid "Gegenstände"
 msgstr "Items"
 
@@ -1548,7 +2100,11 @@ msgid_plural "%(counter)s Filter aktiv"
 msgstr[0] "%(counter)s filter active"
 msgstr[1] "%(counter)s filters active"
 
-#: templates/collections/collection_detail.html:71
+#: templates/collections/collection_detail.html:69
+msgid "Pro Seite:"
+msgstr "Per page:"
+
+#: templates/collections/collection_detail.html:78
 msgid ""
 "Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und "
 "als QR-Code nutzen."
@@ -1556,19 +2112,47 @@ msgstr ""
 "Filter by your fields. The resulting link can be shared and used as a QR "
 "code."
 
-#: templates/collections/collection_detail.html:72
-msgid "Filter"
-msgstr "Filter"
-
-#: templates/collections/collection_detail.html:75
+#: templates/collections/collection_detail.html:82
 msgid "Aktuellen Filter als Link kopieren (Basis für QR-Codes)"
 msgstr "Copy the current filter as a link (basis for QR codes)"
 
-#: templates/collections/collection_detail.html:76
+#: templates/collections/collection_detail.html:83
 msgid "Filter-Link kopieren"
 msgstr "Copy filter link"
 
-#: templates/collections/collection_detail.html:79
+#: templates/collections/collection_detail.html:88
+msgid "Gespeicherte Ansichten: benannte Filter/Sortierungen dieser Sammlung"
+msgstr "Saved views: named filter/sort states of this collection"
+
+#: templates/collections/collection_detail.html:89
+msgid "Ansichten"
+msgstr "Views"
+
+#: templates/collections/collection_detail.html:101
+msgid "Ansicht wirklich löschen?"
+msgstr "Really delete this view?"
+
+#: templates/collections/collection_detail.html:104
+msgid "Ansicht löschen"
+msgstr "Delete view"
+
+#: templates/collections/collection_detail.html:111
+msgid "Noch keine gespeicherten Ansichten."
+msgstr "No saved views yet."
+
+#: templates/collections/collection_detail.html:119
+msgid "Name der Ansicht"
+msgstr "Name of the view"
+
+#: templates/collections/collection_detail.html:121
+msgid "Aktuelle Filter & Sortierung unter diesem Namen speichern"
+msgstr "Save the current filters & sorting under this name"
+
+#: templates/collections/collection_detail.html:125
+msgid "Speichert die aktuellen Filter & Sortierung."
+msgstr "Saves the current filters & sorting."
+
+#: templates/collections/collection_detail.html:130
 msgid ""
 "Erzeuge einen QR-Code für die aktuelle (gefilterte) Ansicht – ideal als "
 "Etikett für Regal, Bereich oder Fach."
@@ -1576,20 +2160,20 @@ msgstr ""
 "Generate a QR code for the current (filtered) view – ideal as a label for a "
 "shelf, area or compartment."
 
-#: templates/collections/collection_detail.html:80
-#: templates/collections/item_detail.html:104
+#: templates/collections/collection_detail.html:131
+#: templates/collections/item_detail.html:169
 msgid "QR"
 msgstr "QR"
 
-#: templates/collections/collection_detail.html:84
+#: templates/collections/collection_detail.html:135
 msgid "Gefilterte Ansicht als Excel exportieren"
 msgstr "Export the filtered view as Excel"
 
-#: templates/collections/collection_detail.html:84
+#: templates/collections/collection_detail.html:135
 msgid "Gesamte Sammlung als Excel exportieren"
 msgstr "Export the whole collection as Excel"
 
-#: templates/collections/collection_detail.html:85
+#: templates/collections/collection_detail.html:136
 msgid ""
 "Exportiere die (gefilterte) Sammlung als Excel-Datei – die Spalten "
 "entsprechen deinen Feldern."
@@ -1597,119 +2181,130 @@ msgstr ""
 "Export the (filtered) collection as an Excel file – the columns match your "
 "fields."
 
-#: templates/collections/collection_detail.html:86
+#: templates/collections/collection_detail.html:137
 msgid "Export"
 msgstr "Export"
 
-#: templates/collections/collection_detail.html:90
+#: templates/collections/collection_detail.html:141
 msgid "QR-Etiketten der Auswahl als PDF drucken"
 msgstr "Print QR labels of the selection as PDF"
 
-#: templates/collections/collection_detail.html:91
+#: templates/collections/collection_detail.html:142
 msgid ""
 "Drucke QR-Etiketten (PDF) für die angezeigten Gegenstände – zum Aufkleben "
 "auf die Objekte."
 msgstr "Print QR labels (PDF) for the shown items – to stick onto the objects."
 
-#: templates/collections/collection_detail.html:92
+#: templates/collections/collection_detail.html:143
 msgid "Etiketten"
 msgstr "Labels"
 
-#: templates/collections/collection_detail.html:96
+#: templates/collections/collection_detail.html:146
+msgid ""
+"Komplette Sicherung als ZIP: Excel-Tabelle, Datenexport (JSON) und alle "
+"Bilder/Dateien"
+msgstr ""
+"Complete backup as ZIP: Excel table, data export (JSON) and all images/files"
+
+#: templates/collections/collection_detail.html:147
+msgid "Sicherung"
+msgstr "Backup"
+
+#: templates/collections/collection_detail.html:151
 msgid "Gegenstände aus Excel/CSV importieren"
 msgstr "Import items from Excel/CSV"
 
-#: templates/collections/collection_detail.html:97
+#: templates/collections/collection_detail.html:152
 #: templates/collections/import.html:3 templates/collections/import.html:9
 msgid "Import"
 msgstr "Import"
 
-#: templates/collections/collection_detail.html:101
+#: templates/collections/collection_detail.html:156
 msgid "Ausleihen ansehen und verwalten"
 msgstr "View and manage loans"
 
-#: templates/collections/collection_detail.html:102
+#: templates/collections/collection_detail.html:157
 #: templates/collections/loans.html:3 templates/collections/loans.html:7
 #: templates/collections/loans.html:9
 msgid "Ausleihen"
 msgstr "Loans"
 
-#: templates/collections/collection_detail.html:107
+#: templates/collections/collection_detail.html:162
 msgid "Etikett/Barcode/ISBN eines Gegenstands scannen und ihn direkt öffnen"
 msgstr "Scan an item's label/barcode/ISBN to open it directly"
 
-#: templates/collections/collection_detail.html:108
+#: templates/collections/collection_detail.html:163
 msgid "Scannen"
 msgstr "Scan"
 
-#: templates/collections/collection_detail.html:112
+#: templates/collections/collection_detail.html:167
 msgid "Gelöschte Gegenstände wiederherstellen oder endgültig entfernen"
 msgstr "Restore deleted items or remove them permanently"
 
-#: templates/collections/collection_detail.html:113
+#: templates/collections/collection_detail.html:168
 #: templates/collections/trash.html:3 templates/collections/trash.html:7
 #: templates/collections/trash.html:11
 msgid "Papierkorb"
 msgstr "Trash"
 
-#: templates/collections/collection_detail.html:130
+#: templates/collections/collection_detail.html:185
 msgid "ausgewählt"
 msgstr "selected"
 
-#: templates/collections/collection_detail.html:134
+#: templates/collections/collection_detail.html:189
 msgid "— Art entfernen —"
 msgstr "— Remove type —"
 
-#: templates/collections/collection_detail.html:138
+#: templates/collections/collection_detail.html:193
 msgid "Art setzen"
 msgstr "Set type"
 
-#: templates/collections/collection_detail.html:142
+#: templates/collections/collection_detail.html:197
 msgid "Auswahl löschen"
 msgstr "Delete selection"
 
-#: templates/collections/collection_detail.html:153
+#: templates/collections/collection_detail.html:208
 msgid "Alle auswählen"
 msgstr "Select all"
 
-#: templates/collections/collection_detail.html:159
+#: templates/collections/collection_detail.html:214
 msgid "Nach dieser Spalte sortieren"
 msgstr "Sort by this column"
 
-#: templates/collections/collection_detail.html:175
+#: templates/collections/collection_detail.html:230
 msgid "Gegenstand auswählen"
 msgstr "Select item"
 
-#: templates/collections/collection_detail.html:189
+#: templates/collections/collection_detail.html:244
 #: templates/collections/search.html:47
 msgid "Details"
 msgstr "Details"
 
-#: templates/collections/collection_detail.html:198
+#: templates/collections/collection_detail.html:253
 msgid "Seiten"
 msgstr "Pages"
 
-#: templates/collections/collection_detail.html:226
+#: templates/collections/collection_detail.html:281
 msgid "Keine Treffer für die aktuellen Filter."
 msgstr "No matches for the current filters."
 
-#: templates/collections/collection_detail.html:227
+#: templates/collections/collection_detail.html:282
 msgid "Filter zurücksetzen"
 msgstr "Reset filters"
 
-#: templates/collections/collection_detail.html:229
+#: templates/collections/collection_detail.html:284
 msgid "Noch keine Gegenstände."
 msgstr "No items yet."
 
-#: templates/collections/collection_detail.html:230
+#: templates/collections/collection_detail.html:285
 msgid "Füge den ersten hinzu."
 msgstr "Add the first one."
 
-#: templates/collections/collection_detail.html:241
+#: templates/collections/collection_detail.html:296
 msgid "Automatische Suche in externen Datenbanken"
 msgstr "Automatic search across external databases"
 
-#: templates/collections/collection_detail.html:243
+#: templates/collections/collection_detail.html:298
 #, python-format
 msgid ""
 "Beim Anlegen eines Gegenstands werden automatisch <strong>alle verfügbaren "
@@ -1723,65 +2318,66 @@ msgstr ""
 "suggestion search in the input fields. Every field that has been given a "
 "mapping is filled (edit field → “Auto-fill with”)."
 
-#: templates/collections/collection_detail.html:249
-#: templates/collections/statistics.html:43
+#: templates/collections/collection_detail.html:304
+#: templates/collections/statistics.html:45
 msgid "Feld"
 msgstr "Field"
 
-#: templates/collections/collection_detail.html:251
+#: templates/collections/collection_detail.html:306
 msgid "Zeilen ziehen, um die Spaltenreihenfolge zu ändern."
 msgstr "Drag rows to change the column order."
 
-#: templates/collections/collection_detail.html:253
+#: templates/collections/collection_detail.html:308
 msgid "Pflicht"
 msgstr "Required"
 
-#: templates/collections/collection_detail.html:253
+#: templates/collections/collection_detail.html:308
 msgid "Auto-Fill"
 msgstr "Auto-fill"
 
-#: templates/collections/collection_detail.html:258
+#: templates/collections/collection_detail.html:313
 msgid "Standard"
 msgstr "Default"
 
-#: templates/collections/collection_detail.html:266
-#: templates/collections/item_detail.html:28
+#: templates/collections/collection_detail.html:321
+#: templates/collections/item_detail.html:46
 msgid "Löschen"
 msgstr "Delete"
 
-#: templates/collections/collection_detail.html:289
+#: templates/collections/collection_detail.html:344
 msgid "Pflichtfelder:"
 msgstr "Required fields:"
 
-#: templates/collections/collection_detail.html:295
+#: templates/collections/collection_detail.html:350
 msgid ""
 "Noch keine Arten definiert. Arten erlauben es, je Typ unterschiedliche "
 "Pflichtfelder festzulegen."
 msgstr ""
 "No types defined yet. Types let you set different required fields per type."
 
-#: templates/collections/collection_detail.html:306
+#: templates/collections/collection_detail.html:361
 msgid "QR-Code für diese Ansicht (gefiltert)"
 msgstr "QR code for this view (filtered)"
 
-#: templates/collections/collection_detail.html:306
+#: templates/collections/collection_detail.html:361
 msgid "QR-Code für diese Ansicht"
 msgstr "QR code for this view"
 
-#: templates/collections/collection_detail.html:307
-#: templates/collections/collection_detail.html:332
+#: templates/collections/collection_detail.html:362
+#: templates/collections/collection_detail.html:387
 #: templates/collections/item_form.html:50
 #: templates/collections/item_form.html:67
+#: templates/collections/price_search.html:112
 msgid "Schließen"
 msgstr "Close"
 
-#: templates/collections/collection_detail.html:311
-#: templates/collections/item_detail.html:101
-#: templates/collections/item_detail.html:102
+#: templates/collections/collection_detail.html:366
+#: templates/collections/item_detail.html:166
+#: templates/collections/item_detail.html:167
 msgid "QR-Code"
 msgstr "QR code"
 
-#: templates/collections/collection_detail.html:313
+#: templates/collections/collection_detail.html:368
 msgid ""
 "Scannen öffnet genau diese Liste – ideal als Etikett für Regal, Bereich oder "
 "Fach."
@@ -1789,15 +2385,15 @@ msgstr ""
 "Scanning opens exactly this list – ideal as a label for a shelf, area or "
 "compartment."
 
-#: templates/collections/collection_detail.html:319
+#: templates/collections/collection_detail.html:374
 msgid "Herunterladen"
 msgstr "Download"
 
-#: templates/collections/collection_detail.html:331
+#: templates/collections/collection_detail.html:386
 msgid "Gegenstand scannen"
 msgstr "Scan item"
 
-#: templates/collections/collection_detail.html:337
+#: templates/collections/collection_detail.html:392
 msgid ""
 "Halte das Etikett, den Barcode oder die ISBN vor die Kamera – der passende "
 "Gegenstand wird geöffnet."
@@ -1805,13 +2401,13 @@ msgstr ""
 "Hold the label, barcode or ISBN in front of the camera – the matching item "
 "will be opened."
 
-#: templates/collections/collection_detail.html:377
-msgid "Ausgewählte Gegenstände endgültig löschen?"
-msgstr "Permanently delete the selected items?"
+#: templates/collections/collection_detail.html:432
+msgid "Ausgewählte Gegenstände in den Papierkorb verschieben?"
+msgstr "Move the selected items to the trash?"
 
 #: templates/collections/collection_form.html:3
 #: templates/collections/collection_form.html:7
-#: templates/collections/collection_list.html:8
+#: templates/collections/collection_list.html:13
 #: templates/collections/dashboard.html:9
 msgid "Neue Sammlung"
 msgstr "New collection"
@@ -1829,6 +2425,16 @@ msgstr ""
 #: templates/collections/collection_form.html:27
 msgid "Sammlung erstellen"
 msgstr "Create collection"
+
+#: templates/collections/collection_list.html:9
+msgid "Eine Sammlung aus einer ZIP-Sicherung wiederherstellen"
+msgstr "Restore a collection from a ZIP backup"
+
+#: templates/collections/collection_list.html:10
+#: templates/collections/restore.html:9 templates/collections/restore.html:27
+#: templates/collections/trash.html:47
+msgid "Wiederherstellen"
+msgstr "Restore"
 
 #: templates/collections/confirm_delete.html:3
 msgid "Löschen bestätigen"
@@ -1860,38 +2466,38 @@ msgstr ""
 "Your overview: number of owned and shared collections, total items and the "
 "total value across all price fields."
 
-#: templates/collections/dashboard.html:17
+#: templates/collections/dashboard.html:18
 msgid "Eigene Sammlungen"
 msgstr "Own collections"
 
-#: templates/collections/dashboard.html:22
+#: templates/collections/dashboard.html:24
 msgid "Freigegeben für mich"
 msgstr "Shared with me"
 
-#: templates/collections/dashboard.html:27
+#: templates/collections/dashboard.html:30
 msgid "Gegenstände insgesamt"
 msgstr "Items in total"
 
-#: templates/collections/dashboard.html:32
-#: templates/collections/statistics.html:34
+#: templates/collections/dashboard.html:36
+#: templates/collections/statistics.html:36
 msgid "Gesamtwert (Preisfelder)"
 msgstr "Total value (price fields)"
 
-#: templates/collections/dashboard.html:39
+#: templates/collections/dashboard.html:43
 msgid "Offene Ausleihen"
 msgstr "Open loans"
 
-#: templates/collections/dashboard.html:45
+#: templates/collections/dashboard.html:49
 msgid "seit"
 msgstr "since"
 
-#: templates/collections/dashboard.html:47
-#: templates/collections/item_detail.html:59
+#: templates/collections/dashboard.html:51
+#: templates/collections/item_detail.html:123
 #: templates/collections/loans.html:31
 msgid "überfällig"
 msgstr "overdue"
 
-#: templates/collections/dashboard.html:54
+#: templates/collections/dashboard.html:58
 msgid ""
 "Hier erscheinen alle deine und die für dich freigegebenen Sammlungen. Klick "
 "auf eine Karte, um sie zu öffnen."
@@ -1899,11 +2505,11 @@ msgstr ""
 "All your collections and those shared with you appear here. Click a card to "
 "open it."
 
-#: templates/collections/dashboard.html:55
+#: templates/collections/dashboard.html:59
 msgid "Deine Sammlungen"
 msgstr "Your collections"
 
-#: templates/collections/dashboard.html:56
+#: templates/collections/dashboard.html:60
 msgid ""
 "Sammlungen sind deine Kataloge – z. B. Bücher, Filme oder Werkzeuge. Jede "
 "hat eigene, frei definierbare Felder."
@@ -1962,62 +2568,108 @@ msgstr "To the collection"
 msgid "Verliehen"
 msgstr "Lent out"
 
-#: templates/collections/item_detail.html:24
+#: templates/collections/item_detail.html:19
+msgid "Blättern"
+msgstr "Browse"
+
+#: templates/collections/item_detail.html:22
+msgid "Vorheriger Gegenstand (neuer)"
+msgstr "Previous item (newer)"
+
+#: templates/collections/item_detail.html:28
+msgid "Nächster Gegenstand (älter)"
+msgstr "Next item (older)"
+
+#: templates/collections/item_detail.html:34
+msgid ""
+"Preise & Angebote auf vielen Plattformen vergleichen (vorbefüllt mit Code/"
+"Titel)"
+msgstr "Compare prices & offers on many platforms (pre-filled with code/title)"
+
+#: templates/collections/item_detail.html:35
+msgid "Preisvergleich"
+msgstr "Price comparison"
+
+#: templates/collections/item_detail.html:42
 msgid "Kopie dieses Gegenstands anlegen (inkl. Werte und Dateien)"
 msgstr "Create a copy of this item (incl. values and files)"
 
-#: templates/collections/item_detail.html:25
+#: templates/collections/item_detail.html:43
 msgid "Duplizieren"
 msgstr "Duplicate"
 
-#: templates/collections/item_detail.html:52
+#: templates/collections/item_detail.html:70
+msgid "Fotos"
+msgstr "Photos"
+
+#: templates/collections/item_detail.html:86
+msgid "Foto wirklich löschen?"
+msgstr "Really delete this photo?"
+
+#: templates/collections/item_detail.html:89
+msgid "Foto löschen"
+msgstr "Delete photo"
+
+#: templates/collections/item_detail.html:98
+msgid "Füge weitere Fotos hinzu – z. B. Details, Rückseite oder Zustand."
+msgstr "Add more photos — e.g. details, the back, or its condition."
+
+#: templates/collections/item_detail.html:105
+msgid "Fotos auswählen"
+msgstr "Choose photos"
+
+#: templates/collections/item_detail.html:107
+msgid "Hinzufügen"
+msgstr "Add"
+
+#: templates/collections/item_detail.html:116
 msgid "Ausleihe"
 msgstr "Lending"
 
-#: templates/collections/item_detail.html:55
+#: templates/collections/item_detail.html:119
 #, python-format
 msgid "Verliehen an <strong>%(borrower)s</strong> seit %(since)s."
 msgstr "Lent to <strong>%(borrower)s</strong> since %(since)s."
 
-#: templates/collections/item_detail.html:62
+#: templates/collections/item_detail.html:126
 msgid "über 30 Tage"
 msgstr "over 30 days"
 
-#: templates/collections/item_detail.html:69
+#: templates/collections/item_detail.html:133
 msgid "Rückgabe vermerken"
 msgstr "Record return"
 
-#: templates/collections/item_detail.html:76
+#: templates/collections/item_detail.html:140
 msgid "An wen verleihen?"
 msgstr "Lend to whom?"
 
-#: templates/collections/item_detail.html:78
+#: templates/collections/item_detail.html:142
 msgid "Rückgabe bis (optional)"
 msgstr "Due back (optional)"
 
-#: templates/collections/item_detail.html:82
+#: templates/collections/item_detail.html:147
 msgid "Notiz (optional)"
 msgstr "Note (optional)"
 
-#: templates/collections/item_detail.html:83
+#: templates/collections/item_detail.html:148
 msgid "Als verliehen markieren"
 msgstr "Mark as lent"
 
-#: templates/collections/item_detail.html:86
+#: templates/collections/item_detail.html:151
 msgid "Nicht verliehen."
 msgstr "Not lent out."
 
-#: templates/collections/item_detail.html:91
+#: templates/collections/item_detail.html:156
 msgid "Frühere Ausleihen:"
 msgstr "Previous loans:"
 
-#: templates/collections/item_detail.html:103
+#: templates/collections/item_detail.html:168
 msgid "Scannen öffnet diese Seite."
 msgstr "Scanning opens this page."
 
-#: templates/collections/item_detail.html:106
-#: templates/collections/item_detail.html:107
-#: templates/collections/item_detail.html:108
+#: templates/collections/item_detail.html:171
+#: templates/collections/item_detail.html:172
+#: templates/collections/item_detail.html:173
 msgid "Barcode"
 msgstr "Barcode"
 
@@ -2049,10 +2701,12 @@ msgstr ""
 "fields."
 
 #: templates/collections/item_form.html:49
+#: templates/collections/price_search.html:111
 msgid "Code scannen"
 msgstr "Scan code"
 
 #: templates/collections/item_form.html:55
+#: templates/collections/price_search.html:117
 msgid "Halte den Barcode/QR-Code vor die Kamera."
 msgstr "Hold the barcode/QR code in front of the camera."
 
@@ -2087,6 +2741,106 @@ msgstr "Nothing is lent out at the moment."
 #: templates/collections/loans.html:56
 msgid "Frühere Ausleihen"
 msgstr "Previous loans"
+
+#: templates/collections/price_search.html:7
+msgid "Preissuche & Preisvergleich"
+msgstr "Price search & comparison"
+
+#: templates/collections/price_search.html:9
+msgid ""
+"Durchsuche viele Kaufplattformen auf einmal: Preisvergleichsdienste, "
+"Gebrauchtmarktplätze und Shops – vorbefüllt mit deiner Suche und deinen "
+"Filtern."
+msgstr "Search many shopping platforms at once: price-comparison services, second-hand marketplaces and shops — pre-filled with your search and filters."
+
+#: templates/collections/price_search.html:46
+msgid "Plattform-Links erzeugen"
+msgstr "Generate platform links"
+
+#: templates/collections/price_search.html:55
+#, python-format
+msgid ""
+"Suche per Code <strong>%(code)s</strong> – Plattformen mit <span "
+"class=\"badge text-bg-success\">exakt</span> finden genau diese Ausgabe."
+msgstr "Searching by code <strong>%(code)s</strong> — platforms marked <span class=\"badge text-bg-success\">exact</span> find exactly this edition."
+
+#: templates/collections/price_search.html:57
+#, python-format
+msgid ""
+"Textsuche nach „%(text)s“ – mit ISBN/EAN wird die Suche deutlich genauer."
+msgstr "Text search for “%(text)s” — with an ISBN/EAN the search gets much more precise."
+
+#: templates/collections/price_search.html:71
+msgid "Suche per ISBN/EAN – exakte Ausgabe"
+msgstr "Search by ISBN/EAN — exact edition"
+
+#: templates/collections/price_search.html:71
+msgid "exakt"
+msgstr "exact"
+
+#: templates/collections/price_search.html:72
+msgid "gebraucht"
+msgstr "used"
+
+#: templates/collections/price_search.html:73
+msgid "neu"
+msgstr "new"
+
+#: templates/collections/price_search.html:78
+msgid "übernimmt deine Filter"
+msgstr "applies your filters"
+
+#: templates/collections/price_search.html:82
+#, python-format
+msgid "Auf %(name)s suchen"
+msgstr "Search on %(name)s"
+
+#: templates/collections/price_search.html:92
+msgid ""
+"Datenschutz: Diese Seite fragt keine Plattform automatisch an. Erst wenn du "
+"einen Link anklickst, öffnet sich die jeweilige Plattform in einem neuen Tab "
+"und erhält deine Suchbegriffe. Preise und Verfügbarkeit siehst du direkt "
+"dort."
+msgstr "Privacy: this page does not contact any platform automatically. Only when you click a link does that platform open in a new tab and receive your search terms. You see prices and availability right there."
+
+#: templates/collections/price_search.html:97
+msgid "Bitte Suchtext oder Code eingeben."
+msgstr "Please enter a search text or code."
+
+#: templates/collections/price_search.html:102
+msgid ""
+"Tipp: Von jeder Gegenstandsseite gelangst du mit einem Klick hierher – Code, "
+"Titel und Art sind dann schon ausgefüllt."
+msgstr "Tip: every item page brings you here with one click — code, title and kind are then already filled in."
+
+#: templates/collections/restore.html:3 templates/collections/restore.html:12
+msgid "Aus Sicherung wiederherstellen"
+msgstr "Restore from backup"
+
+#: templates/collections/restore.html:14
+msgid ""
+"Lade eine ZIP-Sicherung hoch (Knopf „Sicherung“ einer Sammlung).\n"
+"                Daraus entsteht eine <strong>neue Sammlung</strong> mit "
+"allen Feldern, Arten,\n"
+"                gespeicherten Ansichten, Gegenständen (inkl. Papierkorb), "
+"Ausleih-Historie\n"
+"                und sämtlichen Bildern/Dateien."
+msgstr ""
+"Upload a ZIP backup (a collection’s “Backup” button). It becomes a "
+"<strong>new collection</strong> with all fields, kinds, saved views, items "
+"(incl. trash), loan history and every image/file."
+
+#: templates/collections/restore.html:22
+msgid "Sicherungsdatei (.zip)"
+msgstr "Backup file (.zip)"
+
+#: templates/collections/restore.html:32
+msgid ""
+"Freigaben werden aus Datenschutzgründen nicht wiederhergestellt – teile die "
+"neue Sammlung bei Bedarf erneut."
+msgstr ""
+"For privacy reasons, shares are not restored — re-share the new collection "
+"if needed."
 
 #: templates/collections/search.html:10
 msgid "In allen Sammlungen suchen…"
@@ -2210,43 +2964,43 @@ msgstr[1] ""
 msgid "Ganze Sammlung"
 msgstr "Whole collection"
 
-#: templates/collections/statistics.html:40
+#: templates/collections/statistics.html:42
 msgid "Zahlen-Auswertungen"
 msgstr "Numeric analyses"
 
-#: templates/collections/statistics.html:43
+#: templates/collections/statistics.html:45
 msgid "Summe"
 msgstr "Sum"
 
-#: templates/collections/statistics.html:43
+#: templates/collections/statistics.html:45
 msgid "Ø"
 msgstr "Avg"
 
-#: templates/collections/statistics.html:43
+#: templates/collections/statistics.html:45
 msgid "Min"
 msgstr "Min"
 
-#: templates/collections/statistics.html:43
+#: templates/collections/statistics.html:45
 msgid "Max"
 msgstr "Max"
 
-#: templates/collections/statistics.html:43
+#: templates/collections/statistics.html:45
 msgid "Anzahl"
 msgstr "Count"
 
-#: templates/collections/statistics.html:70
+#: templates/collections/statistics.html:72
 msgid "Gegenstände je Art"
 msgstr "Items per type"
 
-#: templates/collections/statistics.html:80
+#: templates/collections/statistics.html:82
 msgid "Keine Daten."
 msgstr "No data."
 
-#: templates/collections/statistics.html:85
+#: templates/collections/statistics.html:87
 msgid "Verteilungen"
 msgstr "Distributions"
 
-#: templates/collections/statistics.html:102
+#: templates/collections/statistics.html:104
 msgid "Keine Auswahlfelder zum Auswerten."
 msgstr "No choice fields to analyse."
 
@@ -2270,10 +3024,6 @@ msgstr ""
 #: templates/collections/trash.html:35
 msgid "Aktionen"
 msgstr "Actions"
-
-#: templates/collections/trash.html:47
-msgid "Wiederherstellen"
-msgstr "Restore"
 
 #: templates/collections/trash.html:51
 msgid "Endgültig löschen? Das kann nicht rückgängig gemacht werden."
@@ -2299,6 +3049,320 @@ msgstr ""
 "The system is currently under maintenance and will be back shortly. Please "
 "try again later."
 
+#: templates/pages/imprint.html:11
+msgid "Angaben zum Betreiber"
+msgstr "Operator details"
+
+#: templates/pages/imprint.html:22
+msgid "Für diese Installation wurden noch keine Betreiberangaben hinterlegt."
+msgstr "No operator details have been configured for this installation yet."
+
+#: templates/pages/imprint.html:24
+msgid "Jetzt in den Systemeinstellungen eintragen."
+msgstr "Enter them in the system settings now."
+
+#: templates/pages/imprint.html:26
+msgid ""
+"Bitte wende dich an die Administratorin / den Administrator dieser "
+"Installation."
+msgstr "Please contact the administrator of this installation."
+
+#: templates/pages/imprint.html:32
+msgid ""
+"Diese Anwendung („Collection Management System“) ist eine selbst\n"
+"            gehostete Software zur privaten Sammlungsverwaltung. "
+"Verantwortlich für den\n"
+"            Betrieb dieser Installation ist die oben genannte Stelle."
+msgstr "This application (“Collection Management System”) is self-hosted software for managing private collections. The party named above is responsible for operating this installation."
+
+#: templates/pages/imprint.html:36
+msgid "Zur Datenschutzerklärung"
+msgstr "Go to the privacy policy"
+
+#: templates/pages/privacy.html:9
+msgid "1. Verantwortlicher"
+msgstr "1. Controller"
+
+#: templates/pages/privacy.html:17
+msgid ""
+"Siehe Impressum — die Betreiberangaben dieser Installation wurden noch nicht "
+"hinterlegt."
+msgstr "See the imprint — the operator details of this installation have not been configured yet."
+
+#: templates/pages/privacy.html:20
+msgid "2. Grundsätze"
+msgstr "2. Principles"
+
+#: templates/pages/privacy.html:21
+msgid ""
+"Diese Anwendung ist eine selbst gehostete Sammlungsverwaltung. Es\n"
+"        gibt keine Werbung, kein Tracking, keine Analyse-Dienste und keine "
+"Weitergabe von\n"
+"        Daten zu kommerziellen Zwecken. Alle Skripte, Schriften und Icons "
+"werden vom eigenen\n"
+"        Server geladen — beim normalen Seitenaufruf werden keine Inhalte von "
+"Drittservern\n"
+"        eingebunden."
+msgstr "This application is a self-hosted collection manager. There is no advertising, no tracking, no analytics and no sharing of data for commercial purposes. All scripts, fonts and icons are served from the own server — normal page loads embed no third-party content."
+
+#: templates/pages/privacy.html:27
+msgid "3. Verarbeitete Daten"
+msgstr "3. Data processed"
+
+#: templates/pages/privacy.html:29
+msgid ""
+"<strong>Konto:</strong> Benutzername, E-Mail-Adresse, optionaler\n"
+"            Anzeigename, Passwort (ausschließlich als moderner Argon2-Hash "
+"gespeichert),\n"
+"            optionale Passkeys (nur der öffentliche Schlüssel) und "
+"persönliche\n"
+"            Einstellungen."
+msgstr "<strong>Account:</strong> username, e-mail address, optional display name, password (stored exclusively as a modern Argon2 hash), optional passkeys (public key only) and personal preferences."
+
+#: templates/pages/privacy.html:33
+msgid ""
+"<strong>Sammlungsdaten:</strong> die von dir angelegten Sammlungen,\n"
+"            Felder und Gegenstände samt hochgeladener Bilder und Dateien. "
+"Diese Inhalte sind\n"
+"            privat und nur für dich sowie von dir freigegebene Konten "
+"sichtbar."
+msgstr "<strong>Collection data:</strong> the collections, fields and items you create, including uploaded images and files. These contents are private and visible only to you and to accounts you share them with."
+
+#: templates/pages/privacy.html:36
+msgid ""
+"<strong>Ausleihen:</strong> Wenn du Ausleihen erfasst, speicherst du\n"
+"            dabei ggf. Namen dritter Personen (Entleiher). Du bist dafür "
+"verantwortlich, diese\n"
+"            Angaben sparsam zu halten und zu löschen, wenn sie nicht mehr "
+"nötig sind."
+msgstr "<strong>Loans:</strong> when you record loans you may store names of third parties (borrowers). You are responsible for keeping these entries minimal and deleting them once no longer needed."
+
+#: templates/pages/privacy.html:39
+msgid ""
+"<strong>Sicherheitsprotokolle:</strong> Bei fehlgeschlagenen\n"
+"            Anmeldeversuchen und ausgelösten Schutzsperren werden IP-Adresse "
+"und Benutzername\n"
+"            kurzzeitig protokolliert (Rechtsgrundlage: berechtigtes "
+"Interesse an der\n"
+"            Absicherung des Dienstes, Art. 6 Abs. 1 lit. f DSGVO)."
+msgstr "<strong>Security logs:</strong> failed sign-in attempts and triggered lockouts are logged briefly with IP address and username (legal basis: legitimate interest in securing the service, Art. 6(1)(f) GDPR)."
+
+#: templates/pages/privacy.html:45
+msgid "4. Cookies & lokale Speicherung"
+msgstr "4. Cookies & local storage"
+
+#: templates/pages/privacy.html:46
+msgid ""
+"Es werden ausschließlich technisch notwendige Cookies gesetzt:\n"
+"        Sitzungs-Cookie (Anmeldung), CSRF-Cookie (Schutz vor "
+"Anfragefälschung) und ggf. das\n"
+"        Sprachwahl-Cookie. Die Darstellung (heller/dunkler Modus, "
+"Einführungstour) wird nur\n"
+"        lokal in deinem Browser gespeichert. Einwilligungspflichtige Cookies "
+"gibt es nicht,\n"
+"        daher auch kein Cookie-Banner."
+msgstr "Only technically necessary cookies are set: the session cookie (sign-in), the CSRF cookie (request-forgery protection) and, where used, the language cookie. Presentation choices (light/dark mode, guided tour) are stored only locally in your browser. There are no consent-requiring cookies, hence no cookie banner."
+
+#: templates/pages/privacy.html:52
+msgid "5. E-Mails"
+msgstr "5. E-mails"
+
+#: templates/pages/privacy.html:53
+msgid ""
+"E-Mails werden nur funktionsbezogen versendet: Zurücksetzen des\n"
+"        Passworts, Hinweis an Administratoren bei neuen Registrierungen "
+"sowie – falls\n"
+"        aktiviert – Erinnerungen an überfällige Ausleihen."
+msgstr "E-mails are sent for functional purposes only: password resets, notices to administrators about new registrations and — if enabled — reminders about overdue loans."
+
+#: templates/pages/privacy.html:57
+msgid "6. Abfragen externer Mediendatenbanken"
+msgstr "6. Queries to external media databases"
+
+#: templates/pages/privacy.html:58
+msgid ""
+"Zum automatischen Befüllen von Feldern kann der Server auf deine\n"
+"        aktive Aktion hin (Scan oder Suche) externe Datenbanken abfragen: "
+"Deutsche\n"
+"        Nationalbibliothek, Google Books, Open Library, MusicBrainz, TMDb, "
+"RAWG,\n"
+"        Wikidata und UPCitemdb. Übermittelt wird dabei nur der Suchbegriff "
+"bzw. der\n"
+"        gescannte Code — die Anfrage geht vom Server aus, deine IP-Adresse "
+"wird an diese\n"
+"        Dienste nicht übertragen."
+msgstr ""
+"To auto-fill fields, the server can — upon your explicit action (scan or "
+"search) — query external databases: Deutsche Nationalbibliothek, Google "
+"Books, Open Library, MusicBrainz, TMDb, RAWG, Wikidata and UPCitemdb. Only "
+"the search term or scanned code is transmitted — the request originates from "
+"the server; your IP address is not sent to these services."
+
+#: templates/pages/privacy.html:64
+msgid ""
+"Ausnahme: Cover-<em>Vorschaubilder</em> lädt dein Browser direkt vom\n"
+"        jeweiligen Anbieter; dabei erhält dieser Anbieter deine IP-Adresse. "
+"Einige Anbieter\n"
+"        sitzen in Drittländern (insbesondere USA). Die Nutzung der externen "
+"Suche ist\n"
+"        freiwillig; ohne sie werden keine solchen Verbindungen aufgebaut."
+msgstr "Exception: cover <em>preview images</em> are loaded by your browser directly from the respective provider, which then sees your IP address. Some providers are located in third countries (especially the USA). Using the external search is voluntary; without it, no such connections are made."
+
+#: templates/pages/privacy.html:69
+msgid "7. Preissuche (externe Links)"
+msgstr "7. Price search (external links)"
+
+#: templates/pages/privacy.html:70
+msgid ""
+"Die Preissuche erzeugt ausschließlich Links auf externe\n"
+"        Kaufplattformen (z. B. eBay, idealo, Medimops). Der Server dieser "
+"Anwendung fragt\n"
+"        dabei keine Plattform an. Erst wenn du einen Link anklickst, öffnet "
+"sich die\n"
+"        jeweilige Plattform und erhält deine Suchbegriffe; ab dann gilt "
+"deren\n"
+"        Datenschutzerklärung. Die Links enthalten keine Werbe- oder Tracking-"
+"Kennungen."
+msgstr "The price search only generates links to external shopping platforms (e.g. eBay, idealo, Medimops). The server of this application contacts no platform. Only when you click a link does that platform open and receive your search terms; from then on its privacy policy applies. The links contain no advertising or tracking identifiers."
+
+#: templates/pages/privacy.html:76
+msgid "8. Speicherdauer"
+msgstr "8. Retention"
+
+#: templates/pages/privacy.html:77
+#, python-format
+msgid ""
+"Deine Daten bleiben\n"
+"        gespeichert, bis du sie löschst oder dein Konto entfernst. Gelöschte "
+"Gegenstände\n"
+"        liegen zunächst %(days)s Tage im Papierkorb (wiederherstellbar) und "
+"werden danach\n"
+"        endgültig entfernt. Sicherheitsprotokolle werden nur kurzzeitig "
+"vorgehalten."
+msgstr "Your data is stored until you delete it or remove your account. Deleted items first stay in the trash for %(days)s days (restorable) and are then removed for good. Security logs are kept only briefly."
+
+#: templates/pages/privacy.html:82
+msgid "9. Freigaben"
+msgstr "9. Sharing"
+
+#: templates/pages/privacy.html:83
+msgid ""
+"Gibst du eine Sammlung für andere Konten frei, sehen diese die\n"
+"        Inhalte der Sammlung sowie deinen Benutzer-/Anzeigenamen. Freigaben "
+"kannst du\n"
+"        jederzeit selbst widerrufen."
+msgstr "If you share a collection with other accounts, they see the collection contents and your username/display name. You can revoke shares yourself at any time."
+
+#: templates/pages/privacy.html:87
+msgid "10. Deine Rechte"
+msgstr "10. Your rights"
+
+#: templates/pages/privacy.html:88
+msgid ""
+"Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung\n"
+"        (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. "
+"18),\n"
+"        Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21) sowie das "
+"Recht auf\n"
+"        Beschwerde bei einer Datenschutz-Aufsichtsbehörde."
+msgstr "You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and objection (Art. 21), as well as the right to lodge a complaint with a supervisory authority."
+
+#: templates/pages/privacy.html:94
+msgid "Vieles davon erledigst du direkt selbst:"
+msgstr "Much of this you can do yourself, right away:"
+
+#: templates/pages/privacy.html:95
+msgid "Alle meine Daten exportieren (JSON)"
+msgstr "Export all my data (JSON)"
+
+#: templates/pages/privacy.html:97 templates/registration/account_delete.html:8
+msgid "Konto endgültig löschen"
+msgstr "Permanently delete account"
+
+#: templates/pages/privacy.html:101
+msgid "11. Sicherheit"
+msgstr "11. Security"
+
+#: templates/pages/privacy.html:102
+msgid ""
+"Der Zugriff ist durch Anmeldung, Berechtigungsprüfung auf\n"
+"        Zeilenebene, moderne Passwort-Hashes (Argon2), Schutz vor Brute-"
+"Force-Angriffen,\n"
+"        Content-Security-Policy und – im Produktivbetrieb – TLS-"
+"Verschlüsselung\n"
+"        geschützt."
+msgstr "Access is protected by sign-in, row-level permission checks, modern password hashes (Argon2), brute-force protection, a Content-Security-Policy and — in production — TLS encryption."
+
+#: templates/registration/account_delete.html:3
+msgid "Konto löschen"
+msgstr "Delete account"
+
+#: templates/registration/account_delete.html:12
+msgid ""
+"Du bist der einzige aktive Administrator dieser Installation.\n"
+"                Lege zuerst einen weiteren Administrator an (oder lösche die "
+"Installation\n"
+"                als Ganzes) — sonst wäre die Verwaltung dauerhaft "
+"ausgesperrt."
+msgstr "You are the only active administrator of this installation. Create another administrator first (or delete the installation as a whole) — otherwise administration would be locked out for good."
+
+#: templates/registration/account_delete.html:16
+msgid "Zurück zum Profil"
+msgstr "Back to profile"
+
+#: templates/registration/account_delete.html:19
+#, python-format
+msgid "Dabei wird <strong>%(collection_count)s Sammlung</strong>"
+msgid_plural "Dabei werden <strong>%(collection_count)s Sammlungen</strong>"
+msgstr[0] "This deletes <strong>%(collection_count)s collection</strong>"
+msgstr[1] "This deletes <strong>%(collection_count)s collections</strong>"
+
+#: templates/registration/account_delete.html:20
+#, python-format
+msgid "mit <strong>%(item_count)s Gegenstand</strong> unwiderruflich gelöscht"
+msgid_plural ""
+"mit <strong>%(item_count)s Gegenständen</strong> unwiderruflich gelöscht"
+msgstr[0] "with <strong>%(item_count)s item</strong> irrevocably"
+msgstr[1] "with <strong>%(item_count)s items</strong> irrevocably"
+
+#: templates/registration/account_delete.html:21
+msgid ""
+"einschließlich aller hochgeladenen Dateien, Ausleihen, Freigaben, API-Tokens "
+"und Passkeys."
+msgstr "including all uploaded files, loans, shares, API tokens and passkeys."
+
+#: templates/registration/account_delete.html:24
+msgid ""
+"Gegenstände, die du in Sammlungen <em>anderer</em> angelegt hast,\n"
+"                bleiben dort erhalten, verlieren aber die Verknüpfung zu "
+"deinem Konto."
+msgstr "Items you created in <em>other people’s</em> collections remain there but lose the link to your account."
+
+#: templates/registration/account_delete.html:26
+msgid "Tipp: Exportiere vorher deine Daten."
+msgstr "Tip: export your data first."
+
+#: templates/registration/account_delete.html:27
+msgid "Datenexport (JSON)"
+msgstr "Data export (JSON)"
+
+#: templates/registration/account_delete.html:29
+msgid "Wirklich? Diese Aktion kann nicht rückgängig gemacht werden."
+msgstr "Really? This action cannot be undone."
+
+#: templates/registration/account_delete.html:33
+msgid "Zur Bestätigung: dein Passwort"
+msgstr "To confirm: your password"
+
+#: templates/registration/account_delete.html:40
+#, python-format
+msgid "Zur Bestätigung: tippe deinen Benutzernamen „%(username)s“"
+msgstr "To confirm: type your username “%(username)s”"
+
+#: templates/registration/account_delete.html:48
+msgid "Konto und alle Daten löschen"
+msgstr "Delete account and all data"
+
 #: templates/registration/login.html:17
 msgid "Benutzername oder Passwort ist falsch."
 msgstr "Username or password is incorrect."
@@ -2315,19 +3379,19 @@ msgstr "Password"
 msgid "oder"
 msgstr "or"
 
-#: templates/registration/login.html:37
+#: templates/registration/login.html:44
 msgid "Mit Passkey anmelden"
 msgstr "Sign in with a passkey"
 
-#: templates/registration/login.html:42
+#: templates/registration/login.html:50
 msgid "Noch kein Konto?"
 msgstr "No account yet?"
 
-#: templates/registration/login.html:42
+#: templates/registration/login.html:50
 msgid "Jetzt registrieren"
 msgstr "Register now"
 
-#: templates/registration/login.html:45
+#: templates/registration/login.html:53
 msgid "Passwort vergessen?"
 msgstr "Forgot your password?"
 

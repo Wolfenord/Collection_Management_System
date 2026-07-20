@@ -26,7 +26,9 @@ Zugriff auf Sammlungen ist zusätzlich pro Benutzer autorisiert
     der Signaturzähler erkennt geklonte Authenticatoren.
   - Die Freigabe-Whitelist gilt auch für Passkey-Logins.
   - Browser erlauben WebAuthn nur in sicheren Kontexten → HTTPS nötig
-    (localhost ausgenommen).
+    (localhost ausgenommen). Für Tests im Heimnetz: `run_https.py`
+    (siehe DEPLOYMENT.md, Abschnitt 4b); als Adresse den Rechnernamen bzw.
+    `<rechnername>.local` verwenden — WebAuthn akzeptiert keine IP-Adressen.
 - **Brute-Force-Schutz** (`accounts/throttling.py`, Cache-basiert):
   - Login: 5 Fehlversuche pro Konto bzw. 20 pro IP → 15 Minuten Sperre;
     auch das richtige Passwort wird während der Sperre abgelehnt.
@@ -36,6 +38,8 @@ Zugriff auf Sammlungen ist zusätzlich pro Benutzer autorisiert
   - Externe Datenbanksuche (Lookup/Suche): max. 30 Anfragen/Minute pro
     Benutzer — der Server lässt sich nicht als Anfrage-Kanone gegen
     DNB/Google/Open Library missbrauchen.
+  - Schwere Download-Endpunkte: DSGVO-Datenexport (JSON) und
+    Sammlungs-Sicherung (ZIP) je max. 10/Stunde pro Benutzer.
   - Sicherheitsereignisse (Lockouts, Rate-Limit-Treffer, fehlgeschlagene
     Passkey-Anmeldungen) werden im Logger ``cms.security`` protokolliert
     (stderr; in Produktion auf Datei/Syslog zeigen lassen).
@@ -56,8 +60,9 @@ Zugriff auf Sammlungen ist zusätzlich pro Benutzer autorisiert
 - **CSP** (Django-6-nativ, erzwungen): `default-src 'self'`; Skripte nur von
   eigener Origin + per-Request-Nonce für die wenigen Inline-Blöcke; keine
   Inline-Event-Handler (durch `data-confirm`-Muster ersetzt); Bilder von
-  eigener Origin + den vier Cover-Hosts der Buchdatenbanken; `frame-ancestors
-  'none'`, `object-src 'none'`, `base-uri`/`form-action 'self'`.
+  eigener Origin + den Cover-Hosts der Mediendatenbanken (DNB, Google Books,
+  Open Library, Cover Art Archive/archive.org, TMDb, RAWG, Wikimedia);
+  `frame-ancestors 'none'`, `object-src 'none'`, `base-uri`/`form-action 'self'`.
 - **X-Frame-Options: DENY**, **nosniff**, **Referrer-Policy: same-origin**.
 - **Permissions-Policy**: nur Kamera (Barcode-Scan/Fotoaufnahme) für die eigene
   Origin; Mikrofon, Standort, Payment, USB aus.
@@ -85,18 +90,35 @@ zusätzlich in die Rate-Limits der öffentlichen Endpunkte.
   LG München I, 3 O 17493/20). Kein Analytics, kein Tracking, keine Cookies
   außer Session/CSRF/Sprache (alle technisch notwendig, kein Cookie-Banner
   erforderlich).
-- Ausnahme, bewusst und nutzerinitiiert: Bei der externen Datenbanksuche lädt
-  der Browser Cover-Vorschaubilder direkt von DNB/Google Books/Open Library
-  (nur diese vier Hosts, per CSP erzwungen). Gespeicherte Cover lädt der
-  Server (Host-Whitelist gegen SSRF) und liefert sie danach selbst aus.
+- Ausnahme, bewusst und nutzerinitiiert: Bei der externen Datenbanksuche
+  (Bücher: DNB/Google Books/Open Library; Musik: MusicBrainz; Filme: TMDb;
+  Videospiele: RAWG; Brettspiele: Wikidata; generische EAN: UPCitemdb)
+  stellt der **Server** die Anfrage — übermittelt wird nur Suchbegriff/Code,
+  keine Nutzer-IP. Cover-Vorschaubilder lädt der Browser direkt vom Anbieter
+  (per CSP auf die Cover-Hosts begrenzt). Gespeicherte Cover lädt der Server
+  (Host-Whitelist gegen SSRF, **Redirects werden gegen dieselbe Whitelist
+  geprüft**, Content-Type- und Größenlimit) und liefert sie selbst aus.
+- **Preissuche = reine Link-Sammlung**: Der Server kontaktiert keine
+  Kaufplattform und scrapt nichts. Erst der Klick des Nutzers öffnet die
+  Plattform (`rel="noopener noreferrer nofollow"`, neuer Tab); die Links
+  enthalten keine Affiliate-/Tracking-Parameter.
 - **Datenminimierung**: Konto = Benutzername, E-Mail, optionaler Anzeigename.
-  Passwörter als PBKDF2-Hash, API-Tokens nur einmal sichtbar, Passkeys nur als
+  Passwörter als Argon2-Hash, API-Tokens nur einmal sichtbar, Passkeys nur als
   öffentlicher Schlüssel.
-- **Löschbarkeit**: Konten können im Admin gelöscht werden (Sammlungen,
-  Gegenstände, Dateien, Tokens, Passkeys hängen per `CASCADE` daran).
-  Papierkorb-Inhalte werden nach Ablauffrist automatisch endgültig entfernt.
-- Für den öffentlichen Betrieb bereitstellen (inhaltlich, außerhalb des Codes):
-  Impressum & Datenschutzerklärung, ggf. AVV mit dem Hoster, Backup-Konzept.
+- **Betroffenenrechte als Self-Service** (eingebaut):
+  - `/datenschutz/` + `/impressum/` — öffentliche Rechtsseiten; die
+    Betreiber-Angaben pflegt der Admin in den Systemeinstellungen.
+  - `/accounts/export.json` — vollständiger Datenexport (Art. 15/20 DSGVO)
+    als maschinenlesbares JSON.
+  - `/accounts/delete/` — Kontolöschung (Art. 17) mit Re-Authentifizierung
+    (Passwort bzw. Benutzername-Bestätigung bei Passkey-only-Konten); löscht
+    auch alle Upload-Dateien von der Platte. Der letzte aktive Superuser kann
+    sich nicht selbst aussperren; der Endpunkt ist rate-limitiert.
+- **Löschbarkeit**: zusätzlich können Konten im Admin gelöscht werden
+  (Sammlungen, Gegenstände, Dateien, Tokens, Passkeys hängen per `CASCADE`
+  daran). Papierkorb-Inhalte werden nach Ablauffrist automatisch entfernt.
+- Für den öffentlichen Betrieb zusätzlich: Impressums-Felder in den
+  Systemeinstellungen ausfüllen, ggf. AVV mit dem Hoster, Backup-Konzept.
 
 ## Upload- & Eingabesicherheit
 
@@ -107,6 +129,11 @@ zusätzlich in die Rate-Limits der öffentlichen Endpunkte.
   JSON-POSTs (Header `X-CSRFToken`); Redirects nach Login werden mit
   `url_has_allowed_host_and_scheme` geprüft (kein Open Redirect).
 - Excel-Import parst nur Zellwerte (openpyxl, keine Makros/Formeln-Ausführung).
+- ZIP-Wiederherstellung (`/collections/restore/`): Archiv wird nie auf die
+  Platte entpackt (kein Zip-Slip); Mitglieder-Anzahl, Einzel- und
+  Gesamtgröße sind begrenzt (Zip-Bomben-Schutz); jedes Feld und jeder Wert
+  wird gegen das Schema validiert; alles läuft in einer Transaktion;
+  Freigaben werden bewusst nicht wiederhergestellt. Max. 5 Versuche/Stunde.
 
 ## Checkliste Produktivbetrieb (`.env` / `config.ini`)
 

@@ -61,7 +61,8 @@ def _is_exempt(path: str) -> bool:
     the language switcher, PWA root files and static/media assets. The
     registration page is deliberately NOT exempt.
     """
-    if path.startswith(('/admin/', '/i18n/', '/static/', '/media/')):
+    if path.startswith(('/admin/', '/i18n/', '/static/', '/media/',
+                        '/impressum/', '/datenschutz/')):
         return True
     if path.startswith('/accounts/') and not path.startswith('/accounts/register/'):
         return True

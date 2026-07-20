@@ -1,7 +1,9 @@
 // Minimal service worker: makes the app installable and tolerable on flaky
-// connections. Static assets (own + CDN) are cached cache-first; pages go
-// network-first with the cache as offline fallback. POSTs are never touched.
-const CACHE = 'cms-v1';
+// connections. Static assets are cached cache-first; pages go network-first
+// with the cache as offline fallback. POSTs are never touched.
+// Bump the cache name whenever static assets change without a new URL
+// (unhashed /static/ paths), so clients drop their stale copies.
+const CACHE = 'cms-v6';
 
 self.addEventListener('install', function () {
     self.skipWaiting();

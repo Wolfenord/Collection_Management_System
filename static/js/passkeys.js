@@ -54,6 +54,21 @@
         el.classList.remove('d-none');
     }
 
+    // Map WebAuthn DOMException names to plain German instead of the
+    // browser's English error text.
+    function friendlyError(err, fallback) {
+        if (err && err.name === 'NotAllowedError') {
+            return gettext('Vorgang abgebrochen oder Zeit abgelaufen – bitte erneut versuchen.');
+        }
+        if (err && err.name === 'SecurityError') {
+            return gettext('Passkeys funktionieren über diese Adresse nicht – die Seite über den Gerätenamen statt der IP öffnen.');
+        }
+        if (err && err.name === 'InvalidStateError') {
+            return gettext('Auf diesem Gerät ist für dein Konto bereits ein Passkey gespeichert.');
+        }
+        return (err && err.message) || fallback;
+    }
+
     // --- Registration (profile page) ------------------------------------
     const addBtn = document.getElementById('passkeyAdd');
     if (addBtn) {
@@ -92,8 +107,8 @@
                     .then(function () { window.location.reload(); })
                     .catch(function (err) {
                         addBtn.disabled = false;
-                        showStatus(status, err && err.message ? err.message
-                            : gettext('Passkey-Registrierung fehlgeschlagen.'), false);
+                        showStatus(status,
+                            friendlyError(err, gettext('Passkey-Registrierung fehlgeschlagen.')), false);
                     });
             });
         }
@@ -137,8 +152,8 @@
                     .then(function (data) { window.location.href = data.redirect; })
                     .catch(function (err) {
                         loginBtn.disabled = false;
-                        showStatus(status, err && err.message ? err.message
-                            : gettext('Passkey-Anmeldung fehlgeschlagen.'), false);
+                        showStatus(status,
+                            friendlyError(err, gettext('Passkey-Anmeldung fehlgeschlagen.')), false);
                     });
             });
         }

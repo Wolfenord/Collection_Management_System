@@ -45,6 +45,7 @@ from webauthn.helpers.exceptions import (
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     PublicKeyCredentialDescriptor,
+    PublicKeyCredentialHint,
     ResidentKeyRequirement,
     UserVerificationRequirement,
 )
@@ -72,6 +73,27 @@ def _error(message: str, status: int = 400) -> JsonResponse:
     return JsonResponse({'ok': False, 'error': message}, status=status)
 
 
+# Ordered: the first matching token names the device (used when the user
+# leaves the label empty — one tap on the phone, no typing needed).
+_DEVICE_PATTERNS = (
+    ('ipad', 'iPad'),
+    ('iphone', 'iPhone'),
+    ('android', 'Android-Gerät'),
+    ('windows', 'Windows-PC'),
+    ('mac os', 'Mac'),
+    ('macintosh', 'Mac'),
+    ('linux', 'Linux-PC'),
+)
+
+
+def _device_label(request) -> str:
+    agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    for token, label in _DEVICE_PATTERNS:
+        if token in agent:
+            return label
+    return str(_('Passkey'))
+
+
 @login_required
 @require_POST
 def register_begin(request):
@@ -87,6 +109,13 @@ def register_begin(request):
             resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.PREFERRED,
         ),
+        # Prefer the device's own authenticator (Face ID / fingerprint /
+        # device PIN) in the browser dialog; security keys stay possible.
+        hints=[
+            PublicKeyCredentialHint.CLIENT_DEVICE,
+            PublicKeyCredentialHint.HYBRID,
+            PublicKeyCredentialHint.SECURITY_KEY,
+        ],
         exclude_credentials=[
             PublicKeyCredentialDescriptor(id=base64url_to_bytes(cred.credential_id))
             for cred in request.user.passkeys.all()
@@ -113,7 +142,8 @@ def register_complete(request):
     except (KeyError, ValueError, InvalidJSONStructure, InvalidRegistrationResponse):
         return _error(_('Passkey-Registrierung fehlgeschlagen.'))
 
-    label = (payload.get('label') or '').strip()[:100] or _('Passkey')
+    # No typed label needed: default to the device name from the User-Agent.
+    label = (payload.get('label') or '').strip()[:100] or _device_label(request)
     WebAuthnCredential.objects.create(
         user=request.user,
         label=label,

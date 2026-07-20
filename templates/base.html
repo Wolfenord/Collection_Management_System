@@ -41,6 +41,7 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'collection_list' %}">{% trans "Sammlungen" %}</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'price_search' %}"><i class="bi bi-tags"></i> {% trans "Preissuche" %}</a></li>
             </ul>
             <form class="d-flex me-lg-3 my-2 my-lg-0" role="search" method="get" action="{% url 'global_search' %}">
                 <div class="input-group input-group-sm">
@@ -82,6 +83,56 @@
                     </ul>
                 </li>
                 {% if user.is_authenticated %}
+                {# Notifications (bell) #}
+                <li class="nav-item dropdown me-lg-1">
+                    <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false" aria-label="{% trans 'Benachrichtigungen' %}">
+                        <i class="bi bi-bell"></i>
+                        {% if notif_unread %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger"
+                              style="font-size:.6rem">{{ notif_unread }}</span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:320px;max-width:380px">
+                        <li><h6 class="dropdown-header">{% trans "Benachrichtigungen" %}</h6></li>
+                        {% if notif_overdue %}
+                        <li>
+                            <a class="dropdown-item text-wrap" href="{% url 'dashboard' %}">
+                                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                                {% blocktrans count counter=notif_overdue %}{{ counter }} überfällige Ausleihe{% plural %}{{ counter }} überfällige Ausleihen{% endblocktrans %}
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% for n in notif_items %}
+                        <li>
+                            <a class="dropdown-item text-wrap {% if not n.read_at %}fw-semibold{% endif %}"
+                               href="{% url 'notification_open' n.pk %}">
+                                <i class="bi {% if n.kind == 'share' %}bi-people{% else %}bi-person-plus{% endif %} text-primary"></i>
+                                {{ n.message }}
+                                <small class="text-body-secondary d-block fw-normal">
+                                    {% blocktrans with time=n.created_at|timesince %}vor {{ time }}{% endblocktrans %}
+                                </small>
+                            </a>
+                        </li>
+                        {% empty %}
+                        {% if not notif_overdue %}
+                        <li><span class="dropdown-item-text text-body-secondary small">{% trans "Keine Benachrichtigungen." %}</span></li>
+                        {% endif %}
+                        {% endfor %}
+                        {% if notif_unread %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="px-3 py-1">
+                            <form method="post" action="{% url 'notifications_read_all' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                    {% trans "Alle als gelesen markieren" %}
+                                </button>
+                            </form>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
                 <li class="nav-item"><a class="nav-link" href="#" id="startTour"><i class="bi bi-question-circle"></i> {% trans "Hilfe" %}</a></li>
                 <li class="nav-item dropdown me-lg-2">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -150,7 +201,10 @@
 </main>
 
 <footer class="container text-center text-muted py-4 small">
-    Collection Management System
+    <div class="mb-1">Collection Management System</div>
+    <a class="link-secondary text-decoration-none" href="{% url 'imprint' %}">{% trans "Impressum" %}</a>
+    <span class="mx-1">·</span>
+    <a class="link-secondary text-decoration-none" href="{% url 'privacy' %}">{% trans "Datenschutz" %}</a>
 </footer>
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>

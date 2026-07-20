@@ -30,6 +30,13 @@
                 </form>
                 {# Password-less sign-in with a passkey (WebAuthn); the button hides itself without browser support/HTTPS. #}
                 <div class="text-center my-3 text-body-secondary small">{% trans "oder" %}</div>
+                {% if passkey_mdns_url %}
+                {# Opened via raw IP: WebAuthn cannot work here — link to the name-based URL instead. #}
+                <div class="alert alert-warning small mb-0">
+                    <i class="bi bi-fingerprint"></i>
+                    {% blocktrans with url=passkey_mdns_url %}Passkeys funktionieren nicht über die IP-Adresse. Öffne die Seite dafür über den Gerätenamen: <a href="{{ url }}" class="alert-link">{{ url }}</a>{% endblocktrans %}
+                </div>
+                {% else %}
                 <button type="button" class="btn btn-outline-primary w-100" id="passkeyLogin"
                         data-begin-url="{% url 'passkey_login_begin' %}"
                         data-complete-url="{% url 'passkey_login_complete' %}"
@@ -37,6 +44,7 @@
                     <i class="bi bi-fingerprint"></i> {% trans "Mit Passkey anmelden" %}
                 </button>
                 <div id="passkeyLoginStatus" class="form-text mt-2 d-none"></div>
+                {% endif %}
                 <p class="text-center mt-3 mb-0 small">
                     {% if site_config.registration_enabled %}
                     {% trans "Noch kein Konto?" %} <a href="{% url 'register' %}">{% trans "Jetzt registrieren" %}</a>

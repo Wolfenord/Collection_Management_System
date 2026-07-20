@@ -121,11 +121,12 @@ class Collection(TimeStampedModel):
     )
     name = models.CharField(_('Name'), max_length=200)
     description = models.TextField(_('Beschreibung'), blank=True)
-    # Legacy column: auto-fill used to be tied to ONE selected provider per
-    # collection. Lookups now always query every registered database (see
-    # ``lookup_providers.auto_provider``), so this value is ignored. The column
-    # only survives to avoid a destructive migration.
-    lookup_provider = models.CharField(_('Externe Datenbank'), max_length=40, blank=True, default='')
+    # The collection's *media kind* (see ``lookup_providers.MEDIA_KINDS``):
+    # decides which external databases the auto-fill queries (books → DNB/
+    # Google Books/Open Library, music → MusicBrainz, …) and which platforms
+    # the price search offers. '' = mixed, ask everything. Historic name — the
+    # column once selected a single provider; kept to avoid a migration.
+    lookup_provider = models.CharField(_('Schwerpunkt'), max_length=40, blank=True, default='')
 
     class Meta:
         ordering = ['name']
@@ -211,6 +212,94 @@ class FieldDefinition(models.Model):
 
     def __str__(self) -> str:
         return f'{self.label} ({self.get_field_type_display()})'
+
+
+class Notification(models.Model):
+    """One in-app notification for one user (bell menu in the navbar).
+
+    Stored as ``kind`` + ``payload`` and rendered to text at display time, so
+    the message always appears in the viewer's current language. ``key``
+    de-duplicates: pushing the same key again re-surfaces the notification
+    (unread, bumped to now) instead of stacking copies.
+    """
+
+    KIND_SHARE = 'share'
+    KIND_REGISTRATION = 'registration'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='notifications')
+    kind = models.CharField(max_length=20)
+    payload = models.JSONField(default=dict, blank=True)
+    url = models.CharField(max_length=300, blank=True)
+    key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(default=timezone.now)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'key'],
+                                    name='unique_notification_key_per_user'),
+        ]
+        indexes = [models.Index(fields=['user', 'read_at'])]
+        verbose_name = _('Benachrichtigung')
+        verbose_name_plural = _('Benachrichtigungen')
+
+    def __str__(self) -> str:
+        return f'{self.user}: {self.key}'
+
+    @classmethod
+    def push(cls, user, *, kind: str, key: str, url: str = '', payload: dict | None = None):
+        """Create or re-surface a notification (unread, timestamped now)."""
+        obj, _created = cls.objects.update_or_create(
+            user=user, key=key,
+            defaults={'kind': kind, 'payload': payload or {}, 'url': url,
+                      'read_at': None, 'created_at': timezone.now()},
+        )
+        return obj
+
+    @property
+    def message(self) -> str:
+        from django.utils.translation import gettext as _t
+        payload = self.payload or {}
+        if self.kind == self.KIND_SHARE:
+            if payload.get('permission') == 'edit':
+                return _t('%(user)s hat „%(collection)s“ zum Bearbeiten für dich freigegeben.') % payload
+            return _t('%(user)s hat „%(collection)s“ für dich freigegeben.') % payload
+        if self.kind == self.KIND_REGISTRATION:
+            return _t('Neue Registrierung: „%(username)s“ wartet auf Freigabe.') % payload
+        return self.key
+
+
+class SavedView(models.Model):
+    """A named, saved filter/sort state of a collection's item list.
+
+    Stores the query string of the filtered URL (filters, sort, page size) —
+    the same string the shareable links and filter QR codes use. Applying a
+    view is just a link to ``collection_detail?<querystring>``.
+    """
+
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE,
+                                   related_name='saved_views')
+    name = models.CharField(_('Name'), max_length=120)
+    querystring = models.TextField(_('Filter'), blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['collection', 'name'],
+                                    name='unique_saved_view_per_collection'),
+        ]
+        verbose_name = _('Gespeicherte Ansicht')
+        verbose_name_plural = _('Gespeicherte Ansichten')
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.collection})'
 
 
 class ItemManager(models.Manager):
@@ -320,6 +409,12 @@ class Loan(models.Model):
 
 def item_asset_path(instance: 'ItemAsset', filename: str) -> str:
     return f'collections/{instance.item.collection_id}/items/{instance.item_id}/{filename}'
+
+
+# Reserved ItemAsset.field_key for the per-item photo gallery (extra photos
+# next to the regular image field). Real FieldDefinition keys may never start
+# with '_' (enforced in FieldDefinitionForm), so this cannot collide.
+GALLERY_KEY = '__gallery'
 
 
 class ItemAsset(models.Model):

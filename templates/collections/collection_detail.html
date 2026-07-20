@@ -65,6 +65,13 @@
                 {% else %}
                     {% blocktrans count counter=item_count %}{{ counter }} Gegenstand{% plural %}{{ counter }} Gegenstände{% endblocktrans %}
                 {% endif %}
+                {% if result_count > 25 %}
+                <span class="ms-2">{% trans "Pro Seite:" %}
+                    {% for option in per_page_options %}
+                        {% if option == per_page %}<strong>{{ option }}</strong>{% else %}<a href="{% querystring per_page=option page=None %}" class="text-decoration-none">{{ option }}</a>{% endif %}{% if not forloop.last %} · {% endif %}
+                    {% endfor %}
+                </span>
+                {% endif %}
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel"
@@ -75,6 +82,50 @@
                         data-copy="{{ share_url }}" title="{% trans 'Aktuellen Filter als Link kopieren (Basis für QR-Codes)' %}">
                     <i class="bi bi-link-45deg"></i> {% trans "Filter-Link kopieren" %}
                 </button>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            title="{% trans 'Gespeicherte Ansichten: benannte Filter/Sortierungen dieser Sammlung' %}">
+                        <i class="bi bi-bookmark-star"></i> {% trans "Ansichten" %}
+                        {% if saved_views %}<span class="badge text-bg-secondary">{{ saved_views|length }}</span>{% endif %}
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:280px">
+                        {% for view in saved_views %}
+                        <div class="d-flex align-items-center gap-1">
+                            <a class="dropdown-item rounded flex-grow-1 text-truncate px-2"
+                               href="{% url 'collection_detail' collection.pk %}{% if view.querystring %}?{{ view.querystring }}{% endif %}">
+                                <i class="bi bi-funnel"></i> {{ view.name }}
+                            </a>
+                            {% if can_edit %}
+                            <form method="post" action="{% url 'saved_view_delete' collection.pk view.pk %}"
+                                  data-confirm="{% trans 'Ansicht wirklich löschen?' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 py-0 px-1"
+                                        title="{% trans 'Ansicht löschen' %}" aria-label="{% trans 'Ansicht löschen' %}">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small px-2 py-1">{% trans "Noch keine gespeicherten Ansichten." %}</div>
+                        {% endfor %}
+                        {% if can_edit %}
+                        <hr class="dropdown-divider">
+                        <form method="post" action="{% url 'saved_view_create' collection.pk %}" class="d-flex gap-1 px-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="querystring" value="{{ current_querystring }}">
+                            <input type="text" name="name" class="form-control form-control-sm"
+                                   placeholder="{% trans 'Name der Ansicht' %}" maxlength="120" required>
+                            <button type="submit" class="btn btn-sm btn-primary text-nowrap"
+                                    title="{% trans 'Aktuelle Filter & Sortierung unter diesem Namen speichern' %}">
+                                <i class="bi bi-save"></i>
+                            </button>
+                        </form>
+                        <div class="form-text px-2 mb-0">{% trans "Speichert die aktuellen Filter & Sortierung." %}</div>
+                        {% endif %}
+                    </div>
+                </div>
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#qrModal"
                         data-intro="{% trans 'Erzeuge einen QR-Code für die aktuelle (gefilterte) Ansicht – ideal als Etikett für Regal, Bereich oder Fach.' %}" data-step="4">
                     <i class="bi bi-qr-code"></i> {% trans "QR" %}
@@ -90,6 +141,10 @@
                    title="{% trans 'QR-Etiketten der Auswahl als PDF drucken' %}"
                    data-intro="{% trans 'Drucke QR-Etiketten (PDF) für die angezeigten Gegenstände – zum Aufkleben auf die Objekte.' %}" data-step="5b">
                     <i class="bi bi-printer"></i> {% trans "Etiketten" %}
+                </a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'collection_backup' collection.pk %}"
+                   title="{% trans 'Komplette Sicherung als ZIP: Excel-Tabelle, Datenexport (JSON) und alle Bilder/Dateien' %}">
+                    <i class="bi bi-file-zip"></i> {% trans "Sicherung" %}
                 </a>
                 {% if can_edit %}
                 <a class="btn btn-sm btn-outline-success" href="{% url 'collection_import' collection.pk %}"
@@ -178,9 +233,9 @@
                         <td data-label="{% trans 'Art' %}"><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
                         {% for field, cell in row.cells %}
                         <td data-label="{{ field.label }}">
-                            {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" style="height:36px" class="rounded">
-                            {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
-                            {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank">{{ cell.value|truncatechars:30 }}</a>
+                            {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" style="height:36px" class="rounded" loading="lazy">
+                            {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
+                            {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank" rel="noopener noreferrer">{{ cell.value|truncatechars:30 }}</a>
                             {% elif cell.kind == 'empty' %}<span class="text-muted">–</span>
                             {% else %}{{ cell.value|truncatechars:60 }}{% endif %}
                         </td>
@@ -374,7 +429,7 @@
     }
     form.addEventListener('submit', function (e) {
         if (e.submitter && e.submitter.id === 'bulkDelete' &&
-            !window.confirm('{% trans "Ausgewählte Gegenstände endgültig löschen?" %}')) {
+            !window.confirm('{% trans "Ausgewählte Gegenstände in den Papierkorb verschieben?" %}')) {
             e.preventDefault();
         }
     });
