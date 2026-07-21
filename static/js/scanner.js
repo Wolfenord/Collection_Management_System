@@ -94,7 +94,7 @@
             // Hand camera selection to the browser/OS via facingMode instead of
             // pinning a deviceId or forcing a zoom, so the device decides.
             scanner.start(
-                { facingMode: { ideal: 'environment' } },
+                { facingMode: 'environment' },
                 { fps: 10, qrbox: { width: 260, height: 160 } },
                 onDecode,
                 function () {}
