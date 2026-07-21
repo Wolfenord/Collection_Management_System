@@ -18,13 +18,36 @@
         let editing = false;
         let openCell = null;
 
+        // Lock the current column widths so swapping a cell's text for an input
+        // never reflows the table (the main source of the "jumpy" feeling).
+        function freezeColumns() {
+            const thead = table.querySelector('thead');
+            // Mobile stacked view (thead hidden) uses block layout — no columns
+            // to freeze, and forcing a fixed width would break the cards.
+            if (thead && getComputedStyle(thead).display === 'none') return;
+            const ths = table.querySelectorAll('thead th');
+            const widths = Array.from(ths).map(function (th) { return th.getBoundingClientRect().width; });
+            table.style.width = table.getBoundingClientRect().width + 'px';
+            ths.forEach(function (th, i) { th.style.width = widths[i] + 'px'; });
+            table.style.tableLayout = 'fixed';
+        }
+        function unfreezeColumns() {
+            table.style.tableLayout = '';
+            table.style.width = '';
+            table.querySelectorAll('thead th').forEach(function (th) { th.style.width = ''; });
+        }
+
         toggle.addEventListener('click', function () {
             editing = !editing;
+            if (editing) { freezeColumns(); }
             table.classList.toggle('inline-mode', editing);
             toggle.classList.toggle('active', editing);
             toggle.classList.toggle('btn-outline-secondary', !editing);
             toggle.classList.toggle('btn-primary', editing);
-            if (!editing && openCell) closeEditor(openCell, false);
+            if (!editing) {
+                if (openCell) closeEditor(openCell, false);
+                unfreezeColumns();
+            }
         });
 
         function buildEditor(td) {

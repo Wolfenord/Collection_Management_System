@@ -359,20 +359,31 @@ code {
 --------------------------------------------------------------------------- */
 .inline-mode td[data-editable] {
     cursor: text;
+    position: relative;
 }
 .inline-mode td[data-editable]:hover {
     background-color: var(--bs-primary-bg-subtle, rgba(13, 110, 253, 0.08));
     box-shadow: inset 0 0 0 1px var(--bs-primary, #0d6efd);
 }
-.inline-mode td[data-editable]:hover .cell-display::after {
+/* Hover affordance sits in the cell corner and is absolutely positioned, so it
+   never reflows the cell's text. */
+.inline-mode td[data-editable]:hover::after {
     content: "\F4CB"; /* bi-pencil */
     font-family: "bootstrap-icons";
-    font-size: 0.75em;
-    margin-left: 0.35rem;
-    opacity: 0.6;
+    font-size: 0.7rem;
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    opacity: 0.5;
+    pointer-events: none;
 }
+/* The editor fills the (frozen) cell exactly — no growing, no reflow. Padding
+   kept tight so the row barely changes height versus the plain text. */
 td .cell-editor {
-    min-width: 6rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
 }
 
 /* Guided tour on phones: keep the tooltip inside the viewport. Intro.js
