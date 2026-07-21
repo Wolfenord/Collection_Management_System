@@ -79,10 +79,16 @@
             if (!track || !track.getCapabilities || !track.applyConstraints) return;
             const caps = track.getCapabilities();
             const advanced = [];
-            if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+            const hasContinuousFocus =
+                caps.focusMode && caps.focusMode.indexOf('continuous') !== -1;
+            if (hasContinuousFocus) {
                 advanced.push({ focusMode: 'continuous' });
             }
-            if (caps.zoom && caps.zoom.max >= 2) {
+            // Only zoom as a fallback when continuous autofocus is NOT available
+            // (e.g. iOS, whose main lens can't focus close). Where autofocus works
+            // (most Android), a forced zoom just crops/pixelates the view and makes
+            // it hard to frame a barcode held close.
+            if (!hasContinuousFocus && caps.zoom && caps.zoom.max >= 2) {
                 advanced.push({ zoom: Math.min(2, caps.zoom.max) });
             }
             if (advanced.length) {
