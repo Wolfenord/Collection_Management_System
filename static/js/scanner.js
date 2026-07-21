@@ -68,32 +68,75 @@
         }
 
         // Close-up sharpness: browsers start the camera without any focus
-        // preference, and many phones then only focus at a distance. Where the
-        // track supports it, switch to continuous autofocus and add a slight
-        // zoom (helps main lenses whose minimum focus distance is too far for
-        // a barcode held close — e.g. iPhones, which expose zoom but not
-        // focusMode). Everything is feature-detected; unsupported = no-op.
+        // preference, and many phones then only focus at a distance. We switch
+        // to continuous autofocus where supported, and — because most phone main
+        // lenses can't focus close enough for a barcode (so it has to be held
+        // further away, where it's too small to decode) — expose a zoom slider
+        // the reader can adjust to enlarge the code. Everything is
+        // feature-detected; unsupported capabilities are simply skipped.
         function optimizeFocus(video) {
             const stream = video && video.srcObject;
             const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
             if (!track || !track.getCapabilities || !track.applyConstraints) return;
             const caps = track.getCapabilities();
-            const advanced = [];
-            const hasContinuousFocus =
-                caps.focusMode && caps.focusMode.indexOf('continuous') !== -1;
-            if (hasContinuousFocus) {
-                advanced.push({ focusMode: 'continuous' });
+
+            if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) {
+                track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+                    .catch(function () { /* best effort */ });
             }
-            // Only zoom as a fallback when continuous autofocus is NOT available
-            // (e.g. iOS, whose main lens can't focus close). Where autofocus works
-            // (most Android), a forced zoom just crops/pixelates the view and makes
-            // it hard to frame a barcode held close.
-            if (!hasContinuousFocus && caps.zoom && caps.zoom.max >= 2) {
-                advanced.push({ zoom: Math.min(2, caps.zoom.max) });
+
+            if (caps.zoom && caps.zoom.max > (caps.zoom.min || 1)) {
+                buildZoomSlider(track, caps.zoom);
             }
-            if (advanced.length) {
-                track.applyConstraints({ advanced: advanced }).catch(function () { /* best effort */ });
-            }
+        }
+
+        // Insert a zoom slider into the scan modal, wired to the live track.
+        // A fixed zoom value is always wrong for some phone/distance combo; a
+        // slider lets the user find the point where the barcode is both in
+        // focus (held at the lens' focus distance) and large enough to decode.
+        function buildZoomSlider(track, zoomCaps) {
+            removeZoomSlider();
+            const region = document.getElementById('scanRegion');
+            if (!region) return;
+
+            const min = zoomCaps.min || 1;
+            const max = zoomCaps.max;
+            const step = zoomCaps.step || 0.1;
+            // Start slightly zoomed so a comfortably-held code is already large.
+            const startZoom = Math.min(max, Math.max(min, 2));
+
+            const wrap = document.createElement('div');
+            wrap.id = 'scanZoom';
+            wrap.className = 'd-flex align-items-center gap-2 mt-2';
+
+            const label = document.createElement('label');
+            label.className = 'small text-nowrap mb-0';
+            label.innerHTML = '<i class="bi bi-zoom-in"></i> ' + gettext('Zoom');
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.className = 'form-range';
+            slider.min = min;
+            slider.max = max;
+            slider.step = step;
+            slider.value = startZoom;
+            slider.setAttribute('aria-label', gettext('Zoom'));
+            slider.addEventListener('input', function () {
+                track.applyConstraints({ advanced: [{ zoom: parseFloat(slider.value) }] })
+                    .catch(function () { /* best effort */ });
+            });
+
+            wrap.appendChild(label);
+            wrap.appendChild(slider);
+            region.parentNode.insertBefore(wrap, region.nextSibling);
+
+            track.applyConstraints({ advanced: [{ zoom: startZoom }] })
+                .catch(function () { /* best effort */ });
+        }
+
+        function removeZoomSlider() {
+            const existing = document.getElementById('scanZoom');
+            if (existing) existing.remove();
         }
 
         function start() {
@@ -117,6 +160,7 @@
         }
 
         function stop() {
+            removeZoomSlider();
             if (scanner) {
                 scanner.stop().then(function () { scanner.clear(); }).catch(function () {});
                 scanner = null;
