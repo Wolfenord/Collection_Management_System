@@ -160,6 +160,16 @@ def _eurobuch(query: PriceQuery) -> str | None:
     return f'https://www.eurobuch.com/buch/isbn/{query.isbn}.html' if query.isbn else None
 
 
+def _vialibri(query: PriceQuery) -> str | None:
+    # ViaLibri: the large antiquarian/second-hand book meta-search across
+    # hundreds of dealers. ISBN gives the most precise results.
+    if query.isbn:
+        return 'https://www.vialibri.net/search?' + urlencode({'isbn': query.isbn})
+    if query.q.strip():
+        return 'https://www.vialibri.net/search?' + urlencode({'keywords': query.q.strip()})
+    return None
+
+
 def _booklooker(query: PriceQuery) -> str | None:
     if query.isbn:
         return f'https://www.booklooker.de/B%C3%BCcher/Angebote/isbn={quote(query.isbn)}'
@@ -222,6 +232,10 @@ def _otto(query: PriceQuery) -> str | None:
 
 PLATFORMS: list[Platform] = [
     # --- Price comparison / meta search -----------------------------------
+    Platform(key='vialibri', label='ViaLibri', build=_vialibri, group='meta',
+             kinds=('books',), condition='both', supports=('code',),
+             note=_('Meta-Suche über hunderte Antiquariate & Gebraucht-Händler weltweit — '
+                    'am genauesten mit ISBN.')),
     Platform(key='eurobuch', label='Eurobuch', build=_eurobuch, group='meta',
              kinds=('books',), condition='both', supports=('code',),
              note=_('Vergleicht neue & gebrauchte Angebote vieler Buchplattformen — braucht eine ISBN.')),

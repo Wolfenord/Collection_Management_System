@@ -10,30 +10,45 @@
         </ol></nav>
         <div class="card shadow-sm"><div class="card-body p-4">
             <h1 class="h4 mb-3">{{ title }}</h1>
-            {% if lookup_search_url %}
-            <div class="alert alert-info d-flex align-items-center gap-2 py-2">
+            {% if lookup_search_url or lookup_url %}
+            <div class="alert alert-info d-flex align-items-start gap-2 py-2">
                 <i class="bi bi-magic"></i>
                 <div class="small mb-0">
-                    {% if lookup_query_key %}
-                    {% blocktrans with provider=lookup_provider_label %}Automatische Suche aktiv: Code (z. B. ISBN) scannen oder eingeben – <strong>alle verfügbaren Datenbanken</strong> ({{ provider }}) werden durchsucht und die zugeordneten Felder befüllt. Auch ohne Code: einfach in einem Feld mit <i class="bi bi-binoculars"></i>-Knopf tippen und einen Vorschlag übernehmen.{% endblocktrans %}
-                    {% else %}
-                    {% blocktrans with provider=lookup_provider_label %}Automatische Suche aktiv: In einem Feld mit <i class="bi bi-binoculars"></i>-Knopf tippen und suchen – <strong>alle verfügbaren Datenbanken</strong> ({{ provider }}) werden durchsucht; ein übernommener Vorschlag befüllt die zugeordneten Felder.{% endblocktrans %}
-                    {% endif %}
+                    {% blocktrans with provider=lookup_provider_label %}Automatische Suche aktiv: In der Suchleiste unten Titel/Name <strong>oder</strong> einen Code (ISBN/EAN) eingeben bzw. scannen – <strong>alle verfügbaren Datenbanken</strong> ({{ provider }}) werden durchsucht und ein übernommener Treffer befüllt die zugeordneten Felder. Einzelne Felder lassen sich weiterhin per <i class="bi bi-upc-scan"></i>-Knopf scannen.{% endblocktrans %}
                 </div>
             </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
-                {% if lookup_search_url %}
+                {% if lookup_search_url or lookup_url %}
                 <div id="autofill" data-lookup-url="{{ lookup_url }}"
                      data-search-url="{{ lookup_search_url }}"
                      data-query-key="{{ lookup_query_key }}" data-provider="{{ lookup_provider_label }}"
-                     data-suggest-fields="{{ lookup_suggest_fields }}"
                      data-exclude="{{ lookup_exclude|default:'' }}"></div>
+                <div class="mb-4 p-3 rounded border bg-light" id="autofillSearch">
+                    <label class="form-label fw-semibold mb-1" for="autofillSearchInput">
+                        <i class="bi bi-search"></i> {% trans "In externen Datenbanken suchen" %}
+                    </label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="autofillSearchInput" autocomplete="off"
+                               data-scan="ean" placeholder="{% trans 'Titel, Name oder ISBN/EAN …' %}">
+                        <button type="button" class="btn btn-primary" id="autofillSearchBtn">
+                            <i class="bi bi-search"></i> {% trans "Suchen" %}
+                        </button>
+                    </div>
+                    <div class="list-group mt-2" id="autofillSearchResults"></div>
+                    <div class="form-text mt-1" id="autofillStatus"></div>
+                </div>
                 {% endif %}
                 {% include 'collections/_form_fields.html' %}
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-primary">{% trans "Speichern" %}</button>
+                    {% if save_and_new %}
+                    <button type="submit" name="save_and_new" value="1" class="btn btn-outline-primary"
+                            title="{% trans 'Speichern und sofort den nächsten Gegenstand anlegen (Art bleibt vorbelegt)' %}">
+                        <i class="bi bi-plus-lg"></i> {% trans "Speichern & nächster" %}
+                    </button>
+                    {% endif %}
                     <a href="{% url 'collection_detail' collection.pk %}" class="btn btn-outline-secondary">{% trans "Abbrechen" %}</a>
                 </div>
             </form>

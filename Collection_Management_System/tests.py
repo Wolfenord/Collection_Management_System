@@ -3161,3 +3161,158 @@ class NotificationTests(TestCase):
         self.client.force_login(self.owner)
         resp = self.client.get(reverse('collection_list'))
         self.assertContains(resp, 'überfällige Ausleihe')
+
+
+class WorkflowTests(TestCase):
+    """Item-type management, inline editing and the fast-capture button."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.viewer = User.objects.create_user('viewer', 'v@e.de', 'pw')
+        self.col = Collection.objects.create(owner=self.owner, name='Sammlung')
+        CollectionShare.objects.create(collection=self.col, user=self.viewer,
+                                        permission=CollectionShare.Permission.VIEW)
+        add_field(self.col, 'name', 'Name', FieldType.TEXT, order=0)
+        add_field(self.col, 'note', 'Notiz', FieldType.TEXT, order=1)
+        add_field(self.col, 'count', 'Anzahl', FieldType.NUMBER, order=2)
+        add_field(self.col, 'pic', 'Bild', FieldType.IMAGE, order=3)
+        self.dvd = ItemType.objects.create(collection=self.col, name='DVD')
+        self.client.force_login(self.owner)
+
+    # --- item type edit/delete ---
+    def test_type_edit_renames(self):
+        resp = self.client.post(reverse('type_edit', args=[self.col.pk, self.dvd.pk]),
+                                {'name': 'Blu-ray', 'order': 0})
+        self.assertEqual(resp.status_code, 302)
+        self.dvd.refresh_from_db()
+        self.assertEqual(self.dvd.name, 'Blu-ray')
+
+    def test_type_delete_unassigns_items(self):
+        item = Item.objects.create(collection=self.col, item_type=self.dvd, values={'name': 'X'})
+        resp = self.client.post(reverse('type_delete', args=[self.col.pk, self.dvd.pk]))
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(ItemType.objects.filter(pk=self.dvd.pk).exists())
+        item.refresh_from_db()
+        self.assertIsNone(item.item_type_id)  # SET_NULL, item survives
+
+    def test_type_delete_confirm_page_counts_items(self):
+        Item.objects.create(collection=self.col, item_type=self.dvd, values={'name': 'X'})
+        resp = self.client.get(reverse('type_delete', args=[self.col.pk, self.dvd.pk]))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_viewer_cannot_delete_type(self):
+        self.client.force_login(self.viewer)
+        resp = self.client.post(reverse('type_delete', args=[self.col.pk, self.dvd.pk]))
+        self.assertEqual(resp.status_code, 403)
+
+    # --- save & next ---
+    def test_save_and_new_returns_to_create_with_type(self):
+        resp = self.client.post(reverse('item_create', args=[self.col.pk]),
+                                {'__item_type': str(self.dvd.pk), 'name': 'A', 'save_and_new': '1'})
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('item_create', args=[self.col.pk]), resp['Location'])
+        self.assertIn(f'item_type={self.dvd.pk}', resp['Location'])
+        self.assertEqual(Item.objects.filter(collection=self.col).count(), 1)
+
+    def test_plain_save_returns_to_detail(self):
+        resp = self.client.post(reverse('item_create', args=[self.col.pk]),
+                                {'__item_type': str(self.dvd.pk), 'name': 'A'})
+        self.assertRedirects(resp, reverse('collection_detail', args=[self.col.pk]))
+
+    # --- inline editing ---
+    def test_inline_update_changes_value(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A'})
+        resp = self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                                {'field_key': 'note', 'value': 'Hallo'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
+        item.refresh_from_db()
+        self.assertEqual(item.values['note'], 'Hallo')
+
+    def test_inline_update_clears_value_when_empty(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A', 'note': 'X'})
+        self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                         {'field_key': 'note', 'value': ''})
+        item.refresh_from_db()
+        self.assertNotIn('note', item.values)
+
+    def test_inline_update_validates_number(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A'})
+        resp = self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                                {'field_key': 'count', 'value': 'keine-zahl'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json()['ok'])
+
+    def test_inline_update_rejects_file_field(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A'})
+        resp = self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                                {'field_key': 'pic', 'value': 'x'})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_inline_update_unknown_field(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A'})
+        resp = self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                                {'field_key': 'nope', 'value': 'x'})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_viewer_cannot_inline_update(self):
+        item = Item.objects.create(collection=self.col, values={'name': 'A'})
+        self.client.force_login(self.viewer)
+        resp = self.client.post(reverse('item_inline_update', args=[self.col.pk, item.pk]),
+                                {'field_key': 'note', 'value': 'X'})
+        self.assertEqual(resp.status_code, 403)
+
+
+DISCOGS_SEARCH = {'results': [{'id': 111, 'title': 'Radiohead - OK Computer',
+                              'thumb': 'https://img/thumb.jpg'}]}
+DISCOGS_STATS = {'num_for_sale': 3, 'lowest_price': {'value': 9.99, 'currency': 'EUR'}}
+
+
+class OfferProviderTests(TestCase):
+    def setUp(self):
+        from . import runtime_settings
+        runtime_settings.set_setting('live_offers_enabled', True)
+        runtime_settings.set_setting('discogs_token', 'tok')
+        self.user = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.client.force_login(self.user)
+
+    def _query(self, **kw):
+        from .price_search import PriceQuery
+        return PriceQuery(**kw)
+
+    def test_discogs_offers_parsed(self):
+        from . import offer_providers
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               side_effect=[DISCOGS_SEARCH, DISCOGS_STATS]):
+            offers = offer_providers.fetch_offers(self._query(q='OK Computer', kind='music'))
+        self.assertEqual(len(offers), 1)
+        self.assertEqual(str(offers[0].price), '9.99')
+        self.assertIn('Radiohead', offers[0].title)
+
+    def test_no_offers_without_token(self):
+        from . import offer_providers, runtime_settings
+        runtime_settings.set_setting('discogs_token', '')
+        with mock.patch.object(lookup_providers, '_http_get_json') as m:
+            offers = offer_providers.fetch_offers(self._query(q='x', kind='music'))
+        self.assertEqual(offers, [])
+        m.assert_not_called()
+
+    def test_provider_skips_non_music(self):
+        from . import offer_providers
+        with mock.patch.object(lookup_providers, '_http_get_json') as m:
+            offers = offer_providers.fetch_offers(self._query(q='x', kind='books'))
+        self.assertEqual(offers, [])
+        m.assert_not_called()
+
+    def test_price_page_shows_live_offers(self):
+        with mock.patch.object(lookup_providers, '_http_get_json',
+                               side_effect=[DISCOGS_SEARCH, DISCOGS_STATS]):
+            resp = self.client.get(reverse('price_search'), {'q': 'OK Computer', 'kind': 'music'})
+        self.assertContains(resp, 'Live-Angebote')
+        self.assertContains(resp, '9.99')
+
+    def test_price_page_hides_offers_when_disabled(self):
+        from . import runtime_settings
+        runtime_settings.set_setting('live_offers_enabled', False)
+        resp = self.client.get(reverse('price_search'), {'q': 'OK Computer', 'kind': 'music'})
+        self.assertNotContains(resp, 'Live-Angebote')

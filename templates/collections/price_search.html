@@ -49,6 +49,55 @@
     </form>
 </div></div>
 
+{% if offers is not None %}
+<div class="card shadow-sm mb-4 border-primary-subtle"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <h2 class="h5 mb-0"><i class="bi bi-lightning-charge"></i> {% trans "Live-Angebote" %}</h2>
+        <span class="badge text-bg-light border">{% trans "Angaben ohne Gewähr" %}</span>
+    </div>
+    {% if offers %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>{% trans "Angebot" %}</th>
+                    <th>{% trans "Zustand" %}</th>
+                    <th class="text-end">{% trans "Preis" %}</th>
+                    <th>{% trans "Händler" %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for offer in offers %}
+                <tr>
+                    <td class="d-flex align-items-center gap-2">
+                        {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:32px" class="rounded border" loading="lazy">{% endif %}
+                        <span>{{ offer.title|truncatechars:70 }}</span>
+                    </td>
+                    <td class="text-muted small">{{ offer.condition|default:"—" }}</td>
+                    <td class="text-end text-nowrap fw-semibold">{{ offer.price_display|default:"—" }}</td>
+                    <td class="small">{{ offer.seller }}</td>
+                    <td class="text-end">
+                        <a href="{{ offer.url }}" target="_blank" rel="noopener noreferrer nofollow"
+                           class="btn btn-sm btn-outline-primary text-nowrap">
+                            <i class="bi bi-box-arrow-up-right"></i> {% trans "Ansehen" %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted small mt-2 mb-0">
+        <i class="bi bi-info-circle"></i>
+        {% trans "Live von den jeweiligen Plattformen (offizielle APIs) geladen und zwischengespeichert. Preise/Verfügbarkeit können abweichen – maßgeblich ist die Plattform." %}
+    </p>
+    {% else %}
+    <p class="text-muted mb-0">{% trans "Aktuell keine Live-Angebote gefunden. Nutze die Plattform-Links unten." %}</p>
+    {% endif %}
+</div></div>
+{% endif %}
+
 {% if links %}
 <div class="text-muted small mb-2">
     {% if query.digits %}

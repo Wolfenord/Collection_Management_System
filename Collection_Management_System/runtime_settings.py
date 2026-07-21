@@ -208,6 +208,23 @@ REGISTRY: dict[str, SettingDef] = {
             kind='str', default='', max_length=64,
         ),
         SettingDef(
+            key='live_offers_enabled',
+            label=_('Live-Angebote im Preisvergleich'),
+            help_text=_('Wenn aktiv, holt der Preisvergleich echte Angebote (Titel, Zustand, '
+                        'Preis, Händler) direkt vom Server und zeigt sie inline an – zusätzlich '
+                        'zu den Plattform-Links. Nur für Plattformen mit offizieller API und '
+                        'hinterlegtem Zugang (aktuell Discogs). Angaben ohne Gewähr.'),
+            kind='bool', default=False,
+        ),
+        SettingDef(
+            key='discogs_token',
+            label=_('Discogs-Token (Musik-Angebote)'),
+            help_text=_('Persönlicher Zugriffstoken von discogs.com (Einstellungen → '
+                        'Developers). Schaltet Live-Angebote für Musik/Tonträger frei. '
+                        'Leer = Discogs wird nicht abgefragt.'),
+            kind='str', default='', max_length=128,
+        ),
+        SettingDef(
             key='legal_operator',
             label=_('Impressum: Betreiber'),
             help_text=_('Name des Betreibers/Verantwortlichen für Impressum und '

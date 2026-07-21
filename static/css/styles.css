@@ -353,6 +353,28 @@ code {
     }
 }
 
+/* ---------------------------------------------------------------------------
+   Inline editing of the items table (inline_edit.js). Only active while the
+   "Schnell bearbeiten" mode is on (.inline-mode on the table).
+--------------------------------------------------------------------------- */
+.inline-mode td[data-editable] {
+    cursor: text;
+}
+.inline-mode td[data-editable]:hover {
+    background-color: var(--bs-primary-bg-subtle, rgba(13, 110, 253, 0.08));
+    box-shadow: inset 0 0 0 1px var(--bs-primary, #0d6efd);
+}
+.inline-mode td[data-editable]:hover .cell-display::after {
+    content: "\F4CB"; /* bi-pencil */
+    font-family: "bootstrap-icons";
+    font-size: 0.75em;
+    margin-left: 0.35rem;
+    opacity: 0.6;
+}
+td .cell-editor {
+    min-width: 6rem;
+}
+
 /* Guided tour on phones: keep the tooltip inside the viewport. Intro.js
    positions it absolutely; on narrow screens an unconstrained tooltip can
    overflow and its text ends up invisible next to the highlight. */

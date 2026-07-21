@@ -74,6 +74,37 @@
                 {% endif %}
             </div>
             <div class="d-flex gap-2 flex-wrap">
+                {% if rows %}
+                <div class="btn-group" id="columnMenu" data-collection="{{ collection.pk }}">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            title="{% trans 'Sichtbare Spalten wählen (wird pro Gerät gemerkt)' %}">
+                        <i class="bi bi-layout-three-columns"></i> {% trans "Spalten" %}
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:220px">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="colchk-type" data-col-toggle="type" checked>
+                            <label class="form-check-label" for="colchk-type">{% trans "Art" %}</label>
+                        </div>
+                        {% for field in fields %}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="colchk-{{ field.pk }}" data-col-toggle="{{ field.key }}" checked>
+                            <label class="form-check-label" for="colchk-{{ field.pk }}">{{ field.label }}</label>
+                        </div>
+                        {% endfor %}
+                        <hr class="dropdown-divider">
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" data-col-reset>
+                            {% trans "Alle anzeigen" %}
+                        </button>
+                    </div>
+                </div>
+                {% if can_edit %}
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="inlineToggle"
+                        title="{% trans 'Zellen direkt in der Tabelle bearbeiten (ohne Detailseite)' %}">
+                    <i class="bi bi-pencil-square"></i> {% trans "Schnell bearbeiten" %}
+                </button>
+                {% endif %}
+                {% endif %}
                 <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel"
                         data-intro="{% trans 'Filtere nach deinen Feldern. Der so entstehende Link lässt sich teilen und als QR-Code nutzen.' %}" data-step="3">
                     <i class="bi bi-funnel"></i> {% trans "Filter" %}
@@ -199,7 +230,7 @@
         </div>
         {% endif %}
         <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover align-middle mb-0 table-stack">
+            <table class="table table-sm table-hover align-middle mb-0 table-stack" id="itemsTable">
                 <thead class="table-light">
                     <tr>
                         {% if can_edit %}
@@ -209,7 +240,7 @@
                         </th>
                         {% endif %}
                         {% for col in columns %}
-                        <th>
+                        <th data-col="{{ col.key }}">
                             <a href="{{ col.url }}" class="text-decoration-none text-reset"
                                title="{% trans 'Nach dieser Spalte sortieren' %}">
                                 {{ col.label }}
@@ -222,7 +253,7 @@
                 </thead>
                 <tbody>
                     {% for row in rows %}
-                    <tr>
+                    <tr data-item-id="{{ row.item.pk }}"{% if can_edit %} data-inline-url="{% url 'item_inline_update' collection.pk row.item.pk %}"{% endif %}>
                         {% if can_edit %}
                         <td class="table-stack-check">
                             <input type="checkbox" class="form-check-input" name="items"
@@ -230,17 +261,28 @@
                                    aria-label="{% trans 'Gegenstand auswählen' %}">
                         </td>
                         {% endif %}
-                        <td data-label="{% trans 'Art' %}"><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
-                        {% for field, cell in row.cells %}
-                        <td data-label="{{ field.label }}">
-                            {% if cell.kind == 'image' %}<img src="{{ cell.url }}" alt="" style="height:36px" class="rounded" loading="lazy">
-                            {% elif cell.kind == 'file' %}<a href="{{ cell.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ cell.value }}</a>
-                            {% elif cell.kind == 'url' %}<a href="{{ cell.url }}" target="_blank" rel="noopener noreferrer">{{ cell.value|truncatechars:30 }}</a>
-                            {% elif cell.kind == 'empty' %}<span class="text-muted">–</span>
-                            {% else %}{{ cell.value|truncatechars:60 }}{% endif %}
+                        <td data-col="type" data-label="{% trans 'Art' %}"><span class="text-muted">{{ row.item.item_type|default:'—' }}</span></td>
+                        {% for c in row.cells %}
+                        <td data-col="{{ c.field.key }}" data-label="{{ c.field.label }}"
+                            {% if can_edit and c.field.inline_editable %}data-editable="1" data-key="{{ c.field.key }}"
+                            data-type="{{ c.field.field_type }}" data-raw="{{ c.raw|default_if_none:'' }}"
+                            {% if c.field.field_type == 'choice' %}data-choices="{{ c.field.config.choices|join:'||' }}"{% endif %}{% endif %}>
+                            <span class="cell-display">
+                            {% if c.cell.kind == 'image' %}<img src="{{ c.cell.url }}" alt="" style="height:32px" class="rounded" loading="lazy">
+                            {% elif c.cell.kind == 'file' %}<a href="{{ c.cell.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i> {{ c.cell.value }}</a>
+                            {% elif c.cell.kind == 'url' %}<a href="{{ c.cell.url }}" target="_blank" rel="noopener noreferrer">{{ c.cell.value|truncatechars:30 }}</a>
+                            {% elif c.cell.kind == 'empty' %}<span class="text-muted">–</span>
+                            {% else %}{{ c.cell.value|truncatechars:60 }}{% endif %}
+                            </span>
                         </td>
                         {% endfor %}
-                        <td class="text-end table-stack-actions">
+                        <td class="text-end table-stack-actions text-nowrap">
+                            {% if can_edit %}
+                            <a href="{% url 'item_edit' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-primary"
+                               title="{% trans 'Direkt bearbeiten' %}" aria-label="{% trans 'Direkt bearbeiten' %}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
                             <a href="{% url 'item_detail' collection.pk row.item.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Details" %}</a>
                         </td>
                     </tr>
@@ -295,7 +337,7 @@
         <div class="card shadow-sm mb-3"><div class="card-body">
             <h2 class="h6"><i class="bi bi-magic"></i> {% trans "Automatische Suche in externen Datenbanken" %}</h2>
             <p class="text-muted small mb-0">
-                {% blocktrans with sources=lookup_provider_label %}Beim Anlegen eines Gegenstands werden automatisch <strong>alle verfügbaren Datenbanken</strong> ({{ sources }}) durchsucht – per Code-Scan (z. B. ISBN) oder über die Vorschlagssuche in den Eingabefeldern. Befüllt wird jedes Feld, dem eine Zuordnung gegeben wurde (Feld bearbeiten → „Automatisch befüllen mit“).{% endblocktrans %}
+                {% blocktrans with sources=lookup_provider_label %}Beim Anlegen eines Gegenstands gibt es <strong>eine</strong> Suchleiste, die Titel/Name <strong>und</strong> Codes (ISBN/EAN) annimmt – <strong>alle verfügbaren Datenbanken</strong> ({{ sources }}) werden durchsucht. Befüllt wird jedes Feld, dem eine Zuordnung gegeben wurde (Feld bearbeiten → „Automatisch befüllen mit“).{% endblocktrans %}
             </p>
         </div></div>
         {% endif %}
@@ -337,12 +379,20 @@
             {% if item_types %}
             <ul class="list-group">
                 {% for t in item_types %}
-                <li class="list-group-item">
-                    <strong>{{ t.name }}</strong>
-                    {% if t.description %}<div class="text-muted small">{{ t.description }}</div>{% endif %}
-                    {% with reqs=t.required_fields.all %}
-                    {% if reqs %}<div class="small">{% trans "Pflichtfelder:" %} {% for f in reqs %}<span class="badge text-bg-light">{{ f.label }}</span> {% endfor %}</div>{% endif %}
-                    {% endwith %}
+                <li class="list-group-item d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div class="flex-grow-1">
+                        <strong>{{ t.name }}</strong>
+                        {% if t.description %}<div class="text-muted small">{{ t.description }}</div>{% endif %}
+                        {% with reqs=t.required_fields.all %}
+                        {% if reqs %}<div class="small">{% trans "Pflichtfelder:" %} {% for f in reqs %}<span class="badge text-bg-light">{{ f.label }}</span> {% endfor %}</div>{% endif %}
+                        {% endwith %}
+                    </div>
+                    {% if can_edit %}
+                    <div class="text-nowrap">
+                        <a href="{% url 'type_edit' collection.pk t.pk %}" class="btn btn-sm btn-outline-secondary">{% trans "Bearbeiten" %}</a>
+                        <a href="{% url 'type_delete' collection.pk t.pk %}" class="btn btn-sm btn-outline-danger">{% trans "Löschen" %}</a>
+                    </div>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
@@ -399,6 +449,8 @@
 {% block scripts %}
 <script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
 <script src="{% static 'js/scanner.js' %}"></script>
+<script src="{% static 'js/columns.js' %}"></script>
+{% if can_edit %}<script src="{% static 'js/inline_edit.js' %}"></script>{% endif %}
 {% if can_edit %}
 <script nonce="{{ csp_nonce }}">
 // Bulk selection: toggle the action bar, keep the counter in sync, confirm deletes.

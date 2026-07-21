@@ -70,6 +70,8 @@ urlpatterns = [
 
     # Item types ("Art")
     path('collections/<uuid:pk>/types/new/', views.type_create, name='type_create'),
+    path('collections/<uuid:pk>/types/<int:type_pk>/edit/', views.type_edit, name='type_edit'),
+    path('collections/<uuid:pk>/types/<int:type_pk>/delete/', views.type_delete, name='type_delete'),
 
     # Trash (soft-deleted items)
     path('collections/<uuid:pk>/trash/', views.collection_trash, name='collection_trash'),
@@ -82,6 +84,8 @@ urlpatterns = [
     path('collections/<uuid:pk>/items/new/', views.item_create, name='item_create'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/', views.item_detail, name='item_detail'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/edit/', views.item_edit, name='item_edit'),
+    path('collections/<uuid:pk>/items/<uuid:item_pk>/inline/', views.item_inline_update,
+         name='item_inline_update'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/duplicate/', views.item_duplicate, name='item_duplicate'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/delete/', views.item_delete, name='item_delete'),
 ]

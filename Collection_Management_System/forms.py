@@ -74,10 +74,13 @@ class CollectionForm(forms.ModelForm):
 class FieldDefinitionForm(forms.ModelForm):
     """Create/edit one dynamic column of a collection."""
 
+    # Backing store for the structured options editor (field_form.js). Never a
+    # free-text box the user types into directly — the JS builds a chip editor on
+    # top of this hidden field and only shows it for list (choice) field types.
+    # One option per line (kept for backwards compatibility with clean()).
     choices_text = forms.CharField(
         required=False, label=_('Auswahlmöglichkeiten'),
-        help_text=_('Eine Option pro Zeile (nur für Auswahl-Felder).'),
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        widget=forms.HiddenInput(attrs={'data-choices-store': ''}),
     )
     lookup_attribute = forms.ChoiceField(
         required=False, label=_('Automatisch befüllen mit'),

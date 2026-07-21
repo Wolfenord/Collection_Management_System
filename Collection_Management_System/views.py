@@ -31,6 +31,10 @@ from .rendering import item_row
 from .runtime_settings import get_setting, get_setting_for
 from .services import collections_for_user, create_default_fields
 
+# Field types that can't be edited inline in the items table (they need the full
+# form: file pickers, multi-select). Everything else is a single-value input.
+INLINE_NONEDITABLE_TYPES = {FieldType.IMAGE, FieldType.FILE, FieldType.MULTICHOICE}
+
 
 def _get_collection_for(user, pk, *, need_edit=False) -> Collection:
     """Fetch a collection only if ``user`` may access it, else raise 403/404."""
@@ -193,6 +197,7 @@ def collection_detail(request, pk):
     for field in fields:
         attribute = (field.config or {}).get('lookup_attribute')
         field.lookup_label = attribute_labels.get(attribute, '') if attribute else ''
+        field.inline_editable = field.field_type not in INLINE_NONEDITABLE_TYPES
 
     filter_form = ItemFilterForm(request.GET or None, collection=collection)
     items_qs = filter_form.apply(collection.items.select_related('item_type'))
@@ -207,7 +212,10 @@ def collection_detail(request, pk):
     # Pair each cell with its field so the template can render data-labels
     # (needed for the stacked card layout of the items table on phones).
     rows = [
-        {'item': item, 'cells': list(zip(fields, item_row(item, fields)))}
+        {'item': item, 'cells': [
+            {'field': fd, 'cell': cell, 'raw': (item.values or {}).get(fd.key)}
+            for fd, cell in zip(fields, item_row(item, fields))
+        ]}
         for item in page_obj
     ]
 
@@ -475,6 +483,43 @@ def type_create(request, pk):
                   {'form': form, 'collection': collection, 'title': _('Neue Art')})
 
 
+@login_required
+def type_edit(request, pk, type_pk):
+    """Rename an "Art" / change its per-type required fields."""
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    item_type = get_object_or_404(ItemType, pk=type_pk, collection=collection)
+    if request.method == 'POST':
+        form = ItemTypeForm(request.POST, collection=collection, instance=item_type)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Art aktualisiert.'))
+            return redirect('collection_detail', pk=collection.pk)
+    else:
+        form = ItemTypeForm(collection=collection, instance=item_type)
+    return render(request, 'collections/type_form.html',
+                  {'form': form, 'collection': collection, 'title': _('Art bearbeiten')})
+
+
+@login_required
+def type_delete(request, pk, type_pk):
+    """Delete an "Art". Items keep existing (their item_type is SET_NULL)."""
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    item_type = get_object_or_404(ItemType, pk=type_pk, collection=collection)
+    if request.method == 'POST':
+        name = item_type.name
+        item_type.delete()
+        messages.success(request, _('Art „%(name)s“ wurde entfernt.') % {'name': name})
+        return redirect('collection_detail', pk=collection.pk)
+    count = collection.items.filter(item_type=item_type).count()
+    return render(request, 'collections/confirm_delete.html', {
+        'collection': collection, 'object_label': _('Art „%(name)s“') % {'name': item_type.name},
+        'warning': (_('%(count)s Gegenstand/Gegenstände verlieren dadurch ihre Art-Zuordnung '
+                      '(die Gegenstände selbst bleiben erhalten).') % {'count': count}
+                    if count else
+                    _('Diese Art wird gelöscht. Es sind keine Gegenstände zugeordnet.')),
+    })
+
+
 # --- External-database auto-fill ----------------------------------------------
 
 def _query_key_for(collection, provider) -> tuple[str, str] | tuple[None, None]:
@@ -499,14 +544,11 @@ def _lookup_context(collection, form=None) -> dict:
     MusicBrainz, …) — active as soon as at least one field is mapped to a
     lookup attribute.
 
-    ``lookup_query_key`` is the field doubling as the code input (mapped to
-    ISBN/EAN) — optional: without it, the free-text search and the per-field
-    suggestions still work. ``lookup_suggest_fields`` maps field keys to their
-    attribute for every text field whose value makes a sensible search query
-    (title, authors, interpret, …).
-
-    When ``form`` is given, the query field also gets a ``data-scan`` attribute
-    so scanner.js offers camera scanning even if the field isn't of type ISBN.
+    There is a single top search bar (see lookup.js) that handles both text
+    search (``lookup_search_url``) and code lookup (``lookup_url``); individual
+    fields are no longer searchable. ``lookup_query_key`` is only used to put a
+    ``data-scan`` attribute on the ISBN/EAN field so a code can still be scanned
+    straight into it via scanner.js.
     """
     provider = lookup_providers.provider_for(collection)
     mapped = {
@@ -515,18 +557,19 @@ def _lookup_context(collection, form=None) -> dict:
     }
     if not mapped:
         return {}
+    # The single top search bar handles both text search and code (ISBN/EAN)
+    # lookup; there are no more per-field search buttons. The camera scan on the
+    # ISBN/EAN field stays (data-scan) so a code can still be scanned straight
+    # into its field when the search yields nothing usable.
     query_key, query_attribute = (_query_key_for(collection, provider)
                                   if provider.fetch else (None, None))
     if form is not None and query_key and query_key in form.fields:
         form.fields[query_key].widget.attrs.setdefault('data-scan', query_attribute)
-    suggest = {key: attribute for key, attribute in mapped.items()
-               if attribute in lookup_providers.SEARCHABLE_ATTRIBUTES}
     return {
-        'lookup_url': reverse('item_lookup', args=[collection.pk]) if query_key else '',
+        'lookup_url': reverse('item_lookup', args=[collection.pk]) if provider.fetch else '',
         'lookup_search_url': reverse('item_search', args=[collection.pk]) if provider.search else '',
         'lookup_query_key': query_key or '',
         'lookup_provider_label': provider.label,
-        'lookup_suggest_fields': json.dumps(suggest),
     }
 
 
@@ -761,13 +804,26 @@ def item_create(request, pk):
     if request.method == 'POST':
         form = DynamicItemForm(request.POST, request.FILES, collection=collection)
         if form.is_valid():
-            form.save(user=request.user)
+            item = form.save(user=request.user)
+            # "Speichern & nächster": stay in fast capture mode for an inventory.
+            # Pre-fill the just-used "Art" so a batch of the same kind is quick.
+            if 'save_and_new' in request.POST:
+                messages.success(request, _('Gegenstand hinzugefügt. Weiter mit dem nächsten.'))
+                url = reverse('item_create', args=[collection.pk])
+                if item.item_type_id:
+                    url += f'?item_type={item.item_type_id}'
+                return redirect(url)
             messages.success(request, _('Gegenstand hinzugefügt.'))
             return redirect('collection_detail', pk=collection.pk)
     else:
-        form = DynamicItemForm(collection=collection)
+        initial = {}
+        preset_type = request.GET.get('item_type')
+        if preset_type:
+            initial['__item_type'] = preset_type
+        form = DynamicItemForm(collection=collection, initial=initial or None)
     return render(request, 'collections/item_form.html',
                   {'form': form, 'collection': collection, 'title': _('Neuer Gegenstand'),
+                   'save_and_new': True,
                    **_lookup_context(collection, form)})
 
 
@@ -786,6 +842,50 @@ def item_edit(request, pk, item_pk):
     return render(request, 'collections/item_form.html',
                   {'form': form, 'collection': collection, 'title': _('Gegenstand bearbeiten'),
                    'lookup_exclude': item.pk, **_lookup_context(collection, form)})
+
+
+@login_required
+@require_POST
+def item_inline_update(request, pk, item_pk):
+    """AJAX: edit a single field of one item directly from the items table.
+
+    Validates/coerces the posted value through the same per-type form field the
+    full item form uses (``build_form_field``) and writes it into the item's
+    JSON ``values``. File/image and multi-select fields are excluded (they need
+    the full form). Returns the re-rendered display value for the cell.
+    """
+    from django import forms as dj_forms
+    from .dynamic_forms import build_form_field, _to_jsonable
+    from .rendering import render_cell
+
+    collection = _get_collection_for(request.user, pk, need_edit=True)
+    item = get_object_or_404(Item, pk=item_pk, collection=collection)
+    key = request.POST.get('field_key') or ''
+    fd = next((f for f in collection.fields.all() if f.key == key), None)
+    if fd is None:
+        return JsonResponse({'ok': False, 'error': _('Unbekanntes Feld.')}, status=400)
+    if fd.field_type in INLINE_NONEDITABLE_TYPES:
+        return JsonResponse({'ok': False, 'error': _('Dieses Feld kann nur im Formular '
+                                                     'bearbeitet werden.')}, status=400)
+
+    field = build_form_field(fd, required=False)
+    raw = request.POST.get('value', '')
+    try:
+        cleaned = field.clean(raw)
+    except dj_forms.ValidationError as exc:
+        return JsonResponse({'ok': False, 'error': ' '.join(exc.messages)}, status=400)
+
+    values = dict(item.values or {})
+    if cleaned in (None, '', []):
+        values.pop(key, None)
+    else:
+        values[key] = _to_jsonable(cleaned)
+    item.values = values
+    item.save(update_fields=['values', 'updated_at'])
+
+    cell = render_cell(fd, values.get(key))
+    return JsonResponse({'ok': True, 'display': cell.value or '–',
+                         'empty': cell.kind == 'empty'})
 
 
 # --- Loans ---------------------------------------------------------------------
@@ -1094,19 +1194,48 @@ def trash_empty(request, pk):
 
 # --- Price comparison (link-out search on external platforms) -------------------
 
+def _live_offers(request, query):
+    """Real inline offers for the price search — only when the ``live_offers_enabled``
+    runtime setting is on and at least one provider is configured. Cached (30 min)
+    and per-user throttled, because unlike the link-out cards this makes outbound
+    requests. Returns a list (possibly empty) when active, else ``None`` (feature
+    off / no provider) so the template can tell the two apart."""
+    if not get_setting('live_offers_enabled') or not query.has_query():
+        return None
+    from .offer_providers import active_providers, fetch_offers
+    if not active_providers(query):
+        return None
+    from accounts.throttling import allow
+    if not allow('offers', str(request.user.pk), max_requests=20, window_seconds=60):
+        return None
+
+    import hashlib
+    from django.core.cache import cache
+    digest = hashlib.md5(f'{query.best_text}|{query.kind}'.lower().encode()).hexdigest()
+    cache_key = f'offers:{digest}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    offers = fetch_offers(query)
+    cache.set(cache_key, offers, 30 * 60)
+    return offers
+
+
 @login_required
 def price_search_page(request):
-    """Multi-platform shopping/price search: builds pre-filled deep links into
-    price-comparison engines, second-hand marketplaces and shops.
+    """Multi-platform shopping/price search.
 
-    Everything happens client-side by clicking a link — the server contacts no
-    platform (see price_search.py for the rationale)."""
+    Two layers: (1) pre-filled deep *links* into many platforms (no server-side
+    contact — see price_search.py); (2) optional live inline offers fetched from
+    providers with an official API (see offer_providers.py), off by default."""
     form = price_search.PriceSearchForm(request.GET or None)
     query = form.to_query()
     return render(request, 'collections/price_search.html', {
         'form': form,
         'query': query,
         'links': price_search.build_links(query),
+        'offers': _live_offers(request, query),
+        'live_offers_enabled': get_setting('live_offers_enabled'),
     })
 
 
