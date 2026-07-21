@@ -19,6 +19,10 @@
         let scanner = null;
         let targetInput = null;
         let findUrl = null;
+        let cameras = [];
+        let currentCamId = null;
+        // Remember the chosen camera across sessions (e.g. the macro lens).
+        const CAM_KEY = 'cms.scanCameraId';
 
         if (findBtn) {
             findBtn.addEventListener('click', function () {
@@ -139,18 +143,85 @@
             if (existing) existing.remove();
         }
 
+        // Pick the remembered camera if it is still present, else the rear
+        // camera (usually the last entry in the list).
+        function preferredCamId(list) {
+            let stored = null;
+            try { stored = localStorage.getItem(CAM_KEY); } catch (e) { /* ignore */ }
+            if (stored && list.some(function (c) { return c.id === stored; })) return stored;
+            return list[list.length - 1].id;
+        }
+
+        function startStream(camId) {
+            return scanner.start(
+                camId, { fps: 10, qrbox: { width: 260, height: 160 } }, onDecode, function () {}
+            ).then(function () {
+                optimizeFocus(document.querySelector('#scanRegion video'));
+            });
+        }
+
+        // Switch to another lens without closing the modal. The ultra-wide /
+        // macro camera focuses much closer, so barcodes can be held right up to
+        // the phone — where the main lens only produces a blur.
+        function switchCamera(camId) {
+            currentCamId = camId;
+            try { localStorage.setItem(CAM_KEY, camId); } catch (e) { /* ignore */ }
+            if (!scanner) return;
+            removeZoomSlider();
+            scanner.stop().then(function () {
+                return startStream(camId);
+            }).catch(function () { /* best effort */ });
+        }
+
+        function buildCameraSelect() {
+            removeCameraSelect();
+            if (cameras.length < 2) return;  // nothing to choose from
+            const region = document.getElementById('scanRegion');
+            if (!region) return;
+
+            const wrap = document.createElement('div');
+            wrap.id = 'scanCamera';
+            wrap.className = 'mb-2';
+
+            const select = document.createElement('select');
+            select.className = 'form-select form-select-sm';
+            select.setAttribute('aria-label', gettext('Kamera wählen'));
+            cameras.forEach(function (cam, i) {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = cam.label || (gettext('Kamera') + ' ' + (i + 1));
+                if (cam.id === currentCamId) opt.selected = true;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', function () { switchCamera(select.value); });
+
+            const hint = document.createElement('div');
+            hint.className = 'form-text small mt-1';
+            hint.textContent = gettext(
+                'Für Nahaufnahmen eine andere Kamera wählen (Ultraweitwinkel/Makro stellt näher scharf).'
+            );
+
+            wrap.appendChild(select);
+            wrap.appendChild(hint);
+            region.parentNode.insertBefore(wrap, region);  // above the video
+        }
+
+        function removeCameraSelect() {
+            const existing = document.getElementById('scanCamera');
+            if (existing) existing.remove();
+        }
+
         function start() {
             errorBox.classList.add('d-none');
             scanner = new window.Html5Qrcode('scanRegion', {
                 formatsToSupport: formatsFor(targetInput && targetInput.getAttribute('data-scan')),
             });
-            window.Html5Qrcode.getCameras().then(function (cameras) {
-                if (!cameras || !cameras.length) throw new Error(gettext('Keine Kamera gefunden.'));
-                // Prefer the rear camera (usually the last entry).
-                const camId = cameras[cameras.length - 1].id;
-                return scanner.start(camId, { fps: 10, qrbox: { width: 260, height: 160 } }, onDecode, function () {});
-            }).then(function () {
-                optimizeFocus(document.querySelector('#scanRegion video'));
+            window.Html5Qrcode.getCameras().then(function (list) {
+                if (!list || !list.length) throw new Error(gettext('Keine Kamera gefunden.'));
+                cameras = list;
+                currentCamId = preferredCamId(list);
+                buildCameraSelect();
+                return startStream(currentCamId);
             }).catch(function (err) {
                 errorBox.textContent = gettext('Kamera nicht verfügbar:') + ' ' +
                     (err && err.message ? err.message : err) + ' – ' +
@@ -161,6 +232,7 @@
 
         function stop() {
             removeZoomSlider();
+            removeCameraSelect();
             if (scanner) {
                 scanner.stop().then(function () { scanner.clear(); }).catch(function () {});
                 scanner = null;
