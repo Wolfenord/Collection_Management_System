@@ -458,7 +458,12 @@ _EBAY_BROWSE = 'https://api.ebay.com/buy/browse/v1/item_summary/search'
 
 
 def _ebay_creds() -> tuple[str, str]:
-    from .runtime_settings import get_setting
+    from .runtime_settings import REGISTRY, get_setting
+    # Be resilient to a version skew (e.g. mid-deploy) where this module knows
+    # about the eBay keys but the loaded settings registry does not yet — never
+    # let a missing key 500 the whole price page; just treat eBay as unconfigured.
+    if 'ebay_client_id' not in REGISTRY or 'ebay_client_secret' not in REGISTRY:
+        return '', ''
     return ((get_setting('ebay_client_id') or '').strip(),
             (get_setting('ebay_client_secret') or '').strip())
 
