@@ -101,8 +101,7 @@ class OfferProvider:
     ready: Callable[[], bool] | None = None
 
     def available(self) -> bool:
-        from .runtime_settings import get_setting
-        if self.needs_setting and not get_setting(self.needs_setting):
+        if self.needs_setting and not _setting(self.needs_setting):
             return False
         if self.ready is not None and not self.ready():
             return False
