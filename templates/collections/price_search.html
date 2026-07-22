@@ -39,11 +39,20 @@
             {{ form.max_price }}
         </div>
         <div class="col-md-2 col-6">
+            <label class="form-label" for="{{ form.year_from.id_for_label }}">{{ form.year_from.label }}</label>
+            {{ form.year_from }}
+        </div>
+        <div class="col-md-2 col-6">
+            <label class="form-label" for="{{ form.year_to.id_for_label }}">{{ form.year_to.label }}</label>
+            {{ form.year_to }}
+        </div>
+        <div class="col-md-2 col-6">
             <label class="form-label" for="{{ form.sort.id_for_label }}">{{ form.sort.label }}</label>
             {{ form.sort }}
         </div>
-        <div class="col-12 d-flex gap-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> {% trans "Plattform-Links erzeugen" %}</button>
+        <div class="col-12 d-flex gap-2 flex-wrap align-items-center">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> {% trans "Suchen" %}</button>
+            <span class="text-muted small">{% trans "Jahr-Filter & -Sortierung wirken auf die gefundenen Angebote." %}</span>
             {% if request.GET %}<a href="{% url 'price_search' %}" class="btn btn-outline-secondary">{% trans "Zurücksetzen" %}</a>{% endif %}
         </div>
     </form>
@@ -79,7 +88,10 @@
                         <div class="d-flex align-items-start gap-2">
                             {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:56px;width:auto" class="rounded border flex-shrink-0" loading="lazy">{% endif %}
                             <div style="min-width:0">
-                                <div class="fw-semibold">{{ offer.title|truncatechars:90 }}</div>
+                                <div class="fw-semibold">
+                                    {% if offer.year %}<span class="badge text-bg-primary me-1"><i class="bi bi-calendar3"></i> {{ offer.year }}</span>{% endif %}
+                                    {{ offer.title|truncatechars:90 }}
+                                </div>
                                 {% if offer.meta_line %}<div class="text-muted small">{{ offer.meta_line }}</div>{% endif %}
                                 {% if offer.description %}<div class="text-muted" style="font-size:.75rem">{{ offer.description|truncatechars:140 }}</div>{% endif %}
                             </div>

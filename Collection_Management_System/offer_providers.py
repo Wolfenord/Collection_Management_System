@@ -488,8 +488,44 @@ def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 40,
         for fut in as_completed(futures):
             offers.extend(fut.result())
 
-    offers.sort(key=lambda o: (o.price is None, o.price or Decimal(0)))
-    return _deduplicate(offers)
+    offers = _filter_by_year(offers, query.year_from, query.year_to)
+    offers = _deduplicate(offers)
+    return _sort_offers(offers, query.sort)
+
+
+def _offer_year(offer: Offer) -> int | None:
+    return int(offer.year) if offer.year.isdigit() else None
+
+
+def _filter_by_year(offers: list[Offer], year_from, year_to) -> list[Offer]:
+    """Keep offers whose publication year is within [year_from, year_to].
+
+    Offers whose year the source didn't expose are **kept** (not proven to be
+    outside the range) so a filter never silently drops data with no year."""
+    if not year_from and not year_to:
+        return offers
+    kept = []
+    for offer in offers:
+        year = _offer_year(offer)
+        if year is None:
+            kept.append(offer)
+            continue
+        if year_from and year < year_from:
+            continue
+        if year_to and year > year_to:
+            continue
+        kept.append(offer)
+    return kept
+
+
+def _sort_offers(offers: list[Offer], sort: str) -> list[Offer]:
+    if sort == 'year_desc':
+        offers.sort(key=lambda o: (_offer_year(o) is None, -(_offer_year(o) or 0)))
+    elif sort == 'year_asc':
+        offers.sort(key=lambda o: (_offer_year(o) is None, _offer_year(o) or 0))
+    else:  # default and 'price'
+        offers.sort(key=lambda o: (o.price is None, o.price or Decimal(0)))
+    return offers
 
 
 def _norm(text: str) -> str:

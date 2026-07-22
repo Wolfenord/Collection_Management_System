@@ -45,6 +45,8 @@ CONDITION_CHOICES = [
 SORT_CHOICES = [
     ('', _('Relevanz')),
     ('price', _('Preis aufsteigend (wo unterstützt)')),
+    ('year_desc', _('Jahr (neueste zuerst)')),
+    ('year_asc', _('Jahr (älteste zuerst)')),
 ]
 
 # Groups the result page is organised by.
@@ -67,7 +69,9 @@ class PriceQuery:
     condition: str = ''               # '' | 'new' | 'used'
     min_price: Decimal | None = None
     max_price: Decimal | None = None
-    sort: str = ''                    # '' | 'price'
+    sort: str = ''                    # '' | 'price' | 'year_desc' | 'year_asc'
+    year_from: int | None = None      # publication-year range (live offers filter)
+    year_to: int | None = None
 
     @property
     def digits(self) -> str:
@@ -345,6 +349,16 @@ class PriceSearchForm(forms.Form):
         required=False, label=_('Preis bis'), min_value=0, decimal_places=2, max_digits=10,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
     )
+    year_from = forms.IntegerField(
+        required=False, label=_('Jahr von'), min_value=0, max_value=2100,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'z. B. 1900',
+                                        'min': '0', 'max': '2100'}),
+    )
+    year_to = forms.IntegerField(
+        required=False, label=_('Jahr bis'), min_value=0, max_value=2100,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'z. B. 1950',
+                                        'min': '0', 'max': '2100'}),
+    )
     sort = forms.ChoiceField(
         required=False, label=_('Sortierung'), choices=SORT_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -360,6 +374,8 @@ class PriceSearchForm(forms.Form):
             min_price=data.get('min_price'),
             max_price=data.get('max_price'),
             sort=data.get('sort') or '',
+            year_from=data.get('year_from'),
+            year_to=data.get('year_to'),
         )
 
 

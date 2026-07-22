@@ -3542,3 +3542,42 @@ class OfferEnrichmentTests(TestCase):
         self.assertTrue(o.description.startswith('Schoene Ausgabe'))
         self.assertTrue(o.cover.endswith('md12345.jpg'))
         self.assertIn('Hesse, Hermann · Suhrkamp, 1984 · Taschenbuch', o.meta_line)
+
+
+class OfferYearFilterTests(TestCase):
+    def _offers(self):
+        from decimal import Decimal
+        from .offer_providers import Offer
+        return [
+            Offer(title='A', price=Decimal('5'), year='1901', platform='AbeBooks'),
+            Offer(title='B', price=Decimal('6'), year='1950', platform='ZVAB'),
+            Offer(title='C', price=Decimal('7'), year='2005', platform='Booklooker'),
+            Offer(title='D', price=Decimal('8'), year='', platform='Booklooker'),  # unknown year
+        ]
+
+    def test_filter_keeps_range_and_unknowns(self):
+        from .offer_providers import _filter_by_year
+        result = _filter_by_year(self._offers(), 1900, 1960)
+        titles = {o.title for o in result}
+        self.assertEqual(titles, {'A', 'B', 'D'})  # 2005 dropped, unknown kept
+
+    def test_filter_open_upper_bound(self):
+        from .offer_providers import _filter_by_year
+        result = _filter_by_year(self._offers(), 2000, None)
+        self.assertEqual({o.title for o in result}, {'C', 'D'})
+
+    def test_sort_year_desc(self):
+        from .offer_providers import _sort_offers
+        result = _sort_offers(self._offers(), 'year_desc')
+        self.assertEqual([o.title for o in result], ['C', 'B', 'A', 'D'])  # unknown last
+
+    def test_sort_year_asc(self):
+        from .offer_providers import _sort_offers
+        result = _sort_offers(self._offers(), 'year_asc')
+        self.assertEqual([o.title for o in result], ['A', 'B', 'C', 'D'])
+
+    def test_form_passes_year_range(self):
+        from .price_search import PriceSearchForm
+        form = PriceSearchForm({'q': 'x', 'year_from': '1900', 'year_to': '1950'})
+        query = form.to_query()
+        self.assertEqual((query.year_from, query.year_to), (1900, 1950))
