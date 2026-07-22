@@ -24,12 +24,14 @@ key or a maintained scraper is available.
 
 from __future__ import annotations
 
+import html
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Callable
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from . import lookup_providers
 from .price_search import PriceQuery
@@ -140,9 +142,76 @@ def _discogs(query: PriceQuery, limit: int) -> list[Offer]:
     return offers
 
 
+# --- Booklooker (books): HTML scrape of the public ISBN/title results ---------
+#
+# ViaLibri-style real offers for books. Booklooker renders its results
+# server-side, so we can fetch and parse them without a browser. The parser is
+# deliberately structural-but-forgiving: each offer on the page carries exactly
+# one ``<span class='price'>…&euro;</span>``, preceded by its title, condition
+# and (optionally) a thumbnail — so we segment the page on the price markers and
+# read each offer's fields out of the segment that precedes it. Any layout
+# change simply yields fewer/zero offers (never an error), and the link-out card
+# to Booklooker remains as a fallback.
+
+_BL_PRICE = re.compile(r"<span class='price'>\s*([\d.]*\d,\d{2})\s*&nbsp;&euro;")
+_BL_TITLE = re.compile(r'<span class="articleTitleLink">(.*?)</span>', re.S)
+_BL_LINK = re.compile(r"href='(/B%C3%BCcher/[^']*?/id/[^']*)'")
+_BL_COND = re.compile(r'Zustand:\s*([^<\n]+)')
+_BL_IMG = re.compile(r"(https://images\.booklooker\.de/[^'\"]+?\.jpg)")
+
+
+def _text(fragment: str) -> str:
+    return html.unescape(re.sub(r'<[^>]+>', '', fragment or '')).strip()
+
+
+def _parse_booklooker(body: str, limit: int) -> list[Offer]:
+    if not body:
+        return []
+    offers: list[Offer] = []
+    prev = 0
+    for match in _BL_PRICE.finditer(body):
+        segment = body[prev:match.start()]
+        prev = match.end()
+        price = _to_decimal(match.group(1).replace('.', '').replace(',', '.'))
+        if price is None:
+            continue
+        titles = _BL_TITLE.findall(segment)
+        links = _BL_LINK.findall(segment)
+        conditions = _BL_COND.findall(segment)
+        images = _BL_IMG.findall(segment)
+        title = _text(titles[-1]) if titles else ''
+        if not title:
+            continue
+        offers.append(Offer(
+            title=title,
+            price=price,
+            currency='EUR',
+            condition=_text(conditions[-1])[:60] if conditions else '',
+            seller='Booklooker',
+            url=('https://www.booklooker.de' + links[-1]) if links else
+                'https://www.booklooker.de/',
+            cover=images[0] if images else '',
+        ))
+        if len(offers) >= limit:
+            break
+    return offers
+
+
+def _booklooker(query: PriceQuery, limit: int) -> list[Offer]:
+    if query.isbn:
+        url = f'https://www.booklooker.de/B%C3%BCcher/Angebote/isbn={quote(query.isbn)}'
+    elif query.q.strip():
+        url = f'https://www.booklooker.de/B%C3%BCcher/Angebote/titel={quote(query.q.strip())}'
+    else:
+        return []
+    return _parse_booklooker(lookup_providers._http_get_text(url), limit)
+
+
 OFFER_PROVIDERS: list[OfferProvider] = [
     OfferProvider(key='discogs', label='Discogs', fetch=_discogs,
                   kinds=('music',), needs_setting='discogs_token'),
+    OfferProvider(key='booklooker', label='Booklooker', fetch=_booklooker,
+                  kinds=('books',), needs_setting='book_offers_enabled'),
 ]
 
 

@@ -12,7 +12,7 @@
     <h2 class="h6 text-muted">{% trans "Aktuell verliehen" %} ({{ open_loans|length }})</h2>
     {% if open_loans %}
     <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm align-middle mb-0 table-stack">
             <thead><tr>
                 <th>{% trans "Gegenstand" %}</th><th>{% trans "Art" %}</th>
                 <th>{% trans "Verliehen an" %}</th><th>{% trans "Seit" %}</th>
@@ -22,24 +22,31 @@
             <tbody>
                 {% for loan in open_loans %}
                 <tr>
-                    <td><a href="{% url 'item_detail' collection.pk loan.item.pk %}">{{ loan.item }}</a></td>
-                    <td>{% if loan.item.item_type %}{{ loan.item.item_type }}{% else %}–{% endif %}</td>
-                    <td>{{ loan.borrower }}</td>
-                    <td>{{ loan.lent_at }}</td>
-                    <td>
+                    <td data-label="{% trans 'Gegenstand' %}"><a href="{% url 'item_detail' collection.pk loan.item.pk %}">{{ loan.item }}</a></td>
+                    <td data-label="{% trans 'Art' %}">{% if loan.item.item_type %}{{ loan.item.item_type }}{% else %}–{% endif %}</td>
+                    <td data-label="{% trans 'Verliehen an' %}">{{ loan.borrower }}</td>
+                    <td data-label="{% trans 'Seit' %}">{{ loan.lent_at }}</td>
+                    <td data-label="{% trans 'Rückgabe bis' %}">
                         {{ loan.due_at|default:"–" }}
                         {% if loan.is_overdue %}<span class="badge text-bg-danger">{% trans "überfällig" %}</span>{% endif %}
                     </td>
-                    <td class="text-muted small">{{ loan.note|default:"–" }}</td>
-                    <td class="text-end">
-                        {% if can_edit %}
-                        <form method="post" action="{% url 'item_return' collection.pk loan.item.pk %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-success">
-                                <i class="bi bi-check2"></i> {% trans "Rückgabe" %}
-                            </button>
-                        </form>
-                        {% endif %}
+                    <td data-label="{% trans 'Notiz' %}" class="text-muted small">{{ loan.note|default:"–" }}</td>
+                    <td class="text-end table-stack-actions">
+                        <div class="d-flex gap-1 justify-content-end flex-wrap">
+                            <a href="{% url 'item_loan_agreement' collection.pk loan.item.pk loan.pk %}" target="_blank"
+                               rel="noopener" class="btn btn-sm btn-outline-secondary"
+                               title="{% trans 'Leihvertrag als PDF' %}">
+                                <i class="bi bi-file-earmark-text"></i> {% trans "Vertrag" %}
+                            </a>
+                            {% if can_edit %}
+                            <form method="post" action="{% url 'item_return' collection.pk loan.item.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-check2"></i> {% trans "Rückgabe" %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

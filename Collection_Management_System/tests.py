@@ -3316,3 +3316,114 @@ class OfferProviderTests(TestCase):
         runtime_settings.set_setting('live_offers_enabled', False)
         resp = self.client.get(reverse('price_search'), {'q': 'OK Computer', 'kind': 'music'})
         self.assertNotContains(resp, 'Live-Angebote')
+
+
+class LoanAgreementTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.stranger = User.objects.create_user('stranger', 's@e.de', 'pw')
+        self.col = Collection.objects.create(owner=self.owner, name='Bücher')
+        add_field(self.col, 'name', 'Name', FieldType.TEXT)
+        self.item = Item.objects.create(collection=self.col, values={'name': 'Faust'})
+        self.client.force_login(self.owner)
+
+    def test_lend_stores_contact_and_opens_agreement(self):
+        resp = self.client.post(reverse('item_lend', args=[self.col.pk, self.item.pk]),
+                                {'borrower': 'Anna', 'borrower_contact': 'anna@e.de',
+                                 'make_agreement': '1'})
+        loan = self.item.loans.get()
+        self.assertEqual(loan.borrower_contact, 'anna@e.de')
+        self.assertRedirects(
+            resp, reverse('item_loan_agreement', args=[self.col.pk, self.item.pk, loan.pk]),
+            fetch_redirect_response=False)
+
+    def test_lend_without_agreement_redirects_to_detail(self):
+        resp = self.client.post(reverse('item_lend', args=[self.col.pk, self.item.pk]),
+                                {'borrower': 'Anna'})
+        self.assertRedirects(resp, reverse('item_detail', args=[self.col.pk, self.item.pk]))
+
+    def test_agreement_pdf_renders(self):
+        loan = Loan.objects.create(item=self.item, borrower='Anna', borrower_contact='Musterstr. 1')
+        resp = self.client.get(reverse('item_loan_agreement',
+                                       args=[self.col.pk, self.item.pk, loan.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+        self.assertTrue(resp.content.startswith(b'%PDF'))
+
+    def test_agreement_denied_to_stranger(self):
+        loan = Loan.objects.create(item=self.item, borrower='Anna')
+        self.client.force_login(self.stranger)
+        resp = self.client.get(reverse('item_loan_agreement',
+                                       args=[self.col.pk, self.item.pk, loan.pk]))
+        self.assertEqual(resp.status_code, 403)
+
+
+BOOKLOOKER_HTML = (
+    "<div class=\"articleRow resultlist_productsproduct\"><h2>"
+    "<a href='/B%C3%BCcher/A+T/id/AAA111?zid=x'>"
+    "<span class=\"articleTitleLink\">Erstes Buch</span></a></h2></div>"
+    "<div class=\"articleRow resultlist_productsproduct\">"
+    "<img src='https://images.booklooker.de/x/cover1.jpg'>"
+    "<div class=\"resultList_desc\"><br>ISBN: 123<br>Zustand: gebraucht; gut</div>"
+    "<div class=\"productPrices\"><span class='price'>2,70&nbsp;&euro;</span></div></div>"
+    "<div class=\"articleRow resultlist_productsproduct\"><h2>"
+    "<a href='/B%C3%BCcher/A+T/id/BBB222?zid=y'>"
+    "<span class=\"articleTitleLink\">Zweites Buch</span></a></h2></div>"
+    "<div class=\"articleRow resultlist_productsproduct\">"
+    "<div class=\"resultList_desc\"><br>Zustand: wie neu</div>"
+    "<div class=\"productPrices\"><span class='price'>1,00&nbsp;&euro;</span></div></div>"
+)
+
+
+class BookOfferScraperTests(TestCase):
+    def setUp(self):
+        from . import runtime_settings
+        runtime_settings.set_setting('live_offers_enabled', True)
+        runtime_settings.set_setting('book_offers_enabled', True)
+        self.user = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.client.force_login(self.user)
+
+    def test_parser_extracts_offers(self):
+        from . import offer_providers
+        offers = offer_providers._parse_booklooker(BOOKLOOKER_HTML, 8)
+        self.assertEqual(len(offers), 2)
+        self.assertEqual(offers[0].title, 'Erstes Buch')
+        self.assertEqual(str(offers[0].price), '2.70')
+        self.assertEqual(offers[0].condition, 'gebraucht; gut')
+        self.assertTrue(offers[0].url.endswith('AAA111?zid=x'))
+        self.assertEqual(offers[0].cover, 'https://images.booklooker.de/x/cover1.jpg')
+
+    def test_parser_handles_empty(self):
+        from . import offer_providers
+        self.assertEqual(offer_providers._parse_booklooker('', 8), [])
+        self.assertEqual(offer_providers._parse_booklooker('<html>nix</html>', 8), [])
+
+    def test_fetch_offers_sorts_by_price(self):
+        from . import offer_providers
+        from .price_search import PriceQuery
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=BOOKLOOKER_HTML):
+            offers = offer_providers.fetch_offers(PriceQuery(code='9783518368121', kind='books'))
+        self.assertEqual([str(o.price) for o in offers], ['1.00', '2.70'])
+
+    def test_booklooker_needs_isbn_or_text(self):
+        from . import offer_providers
+        from .price_search import PriceQuery
+        with mock.patch.object(lookup_providers, '_http_get_text') as m:
+            self.assertEqual(offer_providers._booklooker(PriceQuery(kind='books'), 8), [])
+        m.assert_not_called()
+
+    def test_disabled_without_toggle(self):
+        from . import offer_providers, runtime_settings
+        from .price_search import PriceQuery
+        runtime_settings.set_setting('book_offers_enabled', False)
+        with mock.patch.object(lookup_providers, '_http_get_text') as m:
+            offers = offer_providers.fetch_offers(PriceQuery(code='9783518368121', kind='books'))
+        self.assertEqual(offers, [])
+        m.assert_not_called()
+
+    def test_price_page_shows_book_offers(self):
+        with mock.patch.object(lookup_providers, '_http_get_text', return_value=BOOKLOOKER_HTML):
+            resp = self.client.get(reverse('price_search'),
+                                   {'code': '9783518368121', 'kind': 'books'})
+        self.assertContains(resp, 'Live-Angebote')
+        self.assertContains(resp, 'Booklooker')

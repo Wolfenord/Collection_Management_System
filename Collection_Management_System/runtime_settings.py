@@ -225,6 +225,15 @@ REGISTRY: dict[str, SettingDef] = {
             kind='str', default='', max_length=128,
         ),
         SettingDef(
+            key='book_offers_enabled',
+            label=_('Buch-Angebote scrapen (Booklooker)'),
+            help_text=_('Holt echte Buch-Angebote (ViaLibri-artig) per ISBN von Booklooker '
+                        'und zeigt sie inline an. Benötigt keinen Schlüssel, ruft aber die '
+                        'Plattform live ab – bitte deren Nutzungsbedingungen beachten. '
+                        'Nur wirksam, wenn „Live-Angebote“ aktiv ist.'),
+            kind='bool', default=False,
+        ),
+        SettingDef(
             key='legal_operator',
             label=_('Impressum: Betreiber'),
             help_text=_('Name des Betreibers/Verantwortlichen für Impressum und '

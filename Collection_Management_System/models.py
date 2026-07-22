@@ -378,6 +378,9 @@ class Loan(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='loans')
     borrower = models.CharField(_('Verliehen an'), max_length=120)
+    # Optional contact/address of the borrower — used to complete the printable
+    # loan agreement (Leihvertrag). Free text: address, e-mail and/or phone.
+    borrower_contact = models.CharField(_('Kontakt / Anschrift'), max_length=300, blank=True)
     lent_at = models.DateField(_('Verliehen am'), default=timezone.localdate)
     due_at = models.DateField(_('Rückgabe bis'), null=True, blank=True)
     note = models.CharField(_('Notiz'), max_length=255, blank=True)

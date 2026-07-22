@@ -386,6 +386,38 @@ td .cell-editor {
     padding-bottom: 0.1rem;
 }
 
+/* ---------------------------------------------------------------------------
+   General mobile polish: reclaim space and make dense pages breathe on phones.
+--------------------------------------------------------------------------- */
+@media (max-width: 575.98px) {
+    /* p-4 cards waste a lot of width on phones — tighten to a comfortable inset. */
+    .card-body.p-4 {
+        padding: 1.1rem !important;
+    }
+    /* Page headings a touch smaller so long collection names don't dominate. */
+    h1.h3 {
+        font-size: 1.4rem;
+    }
+    /* Detail definition list: stack label above value with tight spacing. */
+    .item-detail-dl dt {
+        margin-bottom: 0;
+        font-size: 0.8rem;
+    }
+    .item-detail-dl dd {
+        margin-bottom: 0.6rem;
+    }
+    /* Breadcrumbs shrink so they never wrap into two lines. */
+    .breadcrumb {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    /* Action toolbars: let icon buttons stay compact side by side. */
+    .toolbar-actions .btn {
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+}
+
 /* Guided tour on phones: keep the tooltip inside the viewport. Intro.js
    positions it absolutely; on narrow screens an unconstrained tooltip can
    overflow and its text ends up invisible next to the highlight. */

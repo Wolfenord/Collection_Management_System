@@ -906,11 +906,33 @@ def item_lend(request, pk, item_pk):
     elif item.active_loan:
         messages.error(request, _('Dieser Gegenstand ist bereits verliehen.'))
     else:
-        Loan.objects.create(item=item, borrower=borrower[:120], due_at=due_at,
-                            note=(request.POST.get('note') or '').strip()[:255],
-                            created_by=request.user)
+        loan = Loan.objects.create(
+            item=item, borrower=borrower[:120], due_at=due_at,
+            borrower_contact=(request.POST.get('borrower_contact') or '').strip()[:300],
+            note=(request.POST.get('note') or '').strip()[:255],
+            created_by=request.user)
+        # "Leihvertrag erstellen" ticked → jump straight to the printable PDF.
+        if request.POST.get('make_agreement'):
+            messages.success(request, _('Als verliehen markiert. Leihvertrag wird geöffnet.'))
+            return redirect('item_loan_agreement', pk=collection.pk, item_pk=item.pk,
+                            loan_pk=loan.pk)
         messages.success(request, _('Als verliehen markiert.'))
     return redirect('item_detail', pk=collection.pk, item_pk=item.pk)
+
+
+@login_required
+def item_loan_agreement(request, pk, item_pk, loan_pk):
+    """Printable loan agreement (Leihvertrag) PDF for one loan."""
+    collection = _get_collection_for(request.user, pk)
+    item = get_object_or_404(Item, pk=item_pk, collection=collection)
+    loan = get_object_or_404(Loan, pk=loan_pk, item=item)
+    from . import contracts
+    pdf = contracts.build_loan_agreement_pdf(collection, item, loan)
+    disposition = 'attachment' if request.GET.get('download') else 'inline'
+    filename = f'leihvertrag-{codes.item_short_code(item)}.pdf'
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+    return response
 
 
 @login_required

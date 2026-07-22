@@ -67,6 +67,8 @@ urlpatterns = [
     path('collections/<uuid:pk>/import/', views.collection_import, name='collection_import'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/lend/', views.item_lend, name='item_lend'),
     path('collections/<uuid:pk>/items/<uuid:item_pk>/return/', views.item_return, name='item_return'),
+    path('collections/<uuid:pk>/items/<uuid:item_pk>/loans/<uuid:loan_pk>/agreement.pdf',
+         views.item_loan_agreement, name='item_loan_agreement'),
 
     # Item types ("Art")
     path('collections/<uuid:pk>/types/new/', views.type_create, name='type_create'),
