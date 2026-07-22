@@ -24,10 +24,13 @@ key or a maintained scraper is available.
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import logging
 import re
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -94,12 +97,16 @@ class OfferProvider:
     fetch: Callable[[PriceQuery, int], list[Offer]]
     kinds: tuple[str, ...] = ()   # () = every media kind
     needs_setting: str = ''       # runtime setting that must be truthy to run
+    # Optional extra gate for providers needing more than one setting (eBay).
+    ready: Callable[[], bool] | None = None
 
     def available(self) -> bool:
-        if not self.needs_setting:
-            return True
         from .runtime_settings import get_setting
-        return bool(get_setting(self.needs_setting))
+        if self.needs_setting and not get_setting(self.needs_setting):
+            return False
+        if self.ready is not None and not self.ready():
+            return False
+        return True
 
     def matches(self, query: PriceQuery) -> bool:
         # No category chosen (kind == '') → search everything (ViaLibri style).
@@ -439,6 +446,102 @@ def _zvab(query: PriceQuery, limit: int) -> list[Offer]:
     return _abebooks_like('https://www.zvab.com', 'ZVAB', query, limit)
 
 
+# --- eBay (general marketplace, all categories) via the official Browse API ----
+#
+# eBay forbids scraping and blocks it technically — the only sanctioned route is
+# the Browse API (OAuth2 client-credentials). The operator supplies their own
+# free developer app keys (ebay_client_id / ebay_client_secret). This adds real
+# marketplace offers with images/condition/shipping across *every* media kind.
+
+_EBAY_OAUTH = 'https://api.ebay.com/identity/v1/oauth2/token'
+_EBAY_BROWSE = 'https://api.ebay.com/buy/browse/v1/item_summary/search'
+
+
+def _ebay_creds() -> tuple[str, str]:
+    from .runtime_settings import get_setting
+    return ((get_setting('ebay_client_id') or '').strip(),
+            (get_setting('ebay_client_secret') or '').strip())
+
+
+def _ebay_ready() -> bool:
+    cid, secret = _ebay_creds()
+    return bool(cid and secret)
+
+
+def _ebay_token() -> str:
+    """A cached eBay application access token (client-credentials grant)."""
+    from django.core.cache import cache
+    token = cache.get('ebay:token')
+    if token:
+        return token
+    cid, secret = _ebay_creds()
+    if not (cid and secret):
+        return ''
+    auth = base64.b64encode(f'{cid}:{secret}'.encode()).decode()
+    body = urlencode({'grant_type': 'client_credentials',
+                      'scope': 'https://api.ebay.com/oauth/api_scope'}).encode()
+    request = urllib.request.Request(_EBAY_OAUTH, data=body, headers={
+        'Authorization': f'Basic {auth}',
+        'Content-Type': 'application/x-www-form-urlencoded',
+    })
+    try:
+        with urllib.request.urlopen(request, timeout=lookup_providers._http_timeout()) as resp:
+            payload = json.loads(resp.read().decode('utf-8'))
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+        log.warning('eBay OAuth failed: %s', exc)
+        return ''
+    token = payload.get('access_token', '')
+    if token:
+        cache.set('ebay:token', token, max(60, int(payload.get('expires_in', 7200)) - 60))
+    return token
+
+
+def _ebay(query: PriceQuery, limit: int) -> list[Offer]:
+    token = _ebay_token()
+    if not token or not query.has_query():
+        return []
+    params = {'q': query.best_text, 'limit': min(50, max(1, limit))}
+    request = urllib.request.Request(f'{_EBAY_BROWSE}?{urlencode(params)}', headers={
+        'Authorization': f'Bearer {token}',
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE',
+    })
+    try:
+        with urllib.request.urlopen(request, timeout=lookup_providers._http_timeout()) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+        log.warning('eBay Browse failed: %s', exc)
+        return []
+    return _parse_ebay(data, limit)
+
+
+def _parse_ebay(data: dict, limit: int) -> list[Offer]:
+    offers: list[Offer] = []
+    for item in (data.get('itemSummaries') or [])[:limit]:
+        price_node = item.get('price') or {}
+        price = _to_decimal(price_node.get('value'))
+        shipping = ''
+        options = item.get('shippingOptions') or []
+        if options:
+            cost = options[0].get('shippingCost') or {}
+            value = _to_decimal(cost.get('value'))
+            if value == 0:
+                shipping = str(_('kostenloser Versand'))
+            elif value is not None:
+                shipping = f'zzgl. {value:.2f} {cost.get("currency", "EUR")} Versand'
+        offers.append(Offer(
+            title=str(item.get('title') or '')[:150],
+            price=price,
+            currency=str(price_node.get('currency') or 'EUR'),
+            condition=str(item.get('condition') or ''),
+            seller=str((item.get('seller') or {}).get('username') or ''),
+            url=str(item.get('itemWebUrl') or ''),
+            cover=str((item.get('image') or {}).get('imageUrl') or ''),
+            platform='eBay',
+            shipping=shipping,
+        ))
+    return offers
+
+
 OFFER_PROVIDERS: list[OfferProvider] = [
     OfferProvider(key='discogs', label='Discogs', fetch=_discogs,
                   kinds=('music',), needs_setting='discogs_token'),
@@ -448,6 +551,8 @@ OFFER_PROVIDERS: list[OfferProvider] = [
                   kinds=('books',), needs_setting='book_offers_enabled'),
     OfferProvider(key='zvab', label='ZVAB', fetch=_zvab,
                   kinds=('books',), needs_setting='book_offers_enabled'),
+    # eBay applies to every category (kinds=()) — gated by API credentials.
+    OfferProvider(key='ebay', label='eBay', fetch=_ebay, ready=_ebay_ready),
 ]
 
 
