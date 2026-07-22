@@ -3620,3 +3620,55 @@ class OfferPriceFilterTests(TestCase):
                 PriceQuery(code='9783518368121', kind='books', max_price=Decimal('10')))
         self.assertTrue(all(o.price <= Decimal('10') for o in offers))
         self.assertTrue(offers)  # Buch A (9.99) survives, Buch B (12.00) filtered
+
+
+EBAY_RESPONSE = {'itemSummaries': [
+    {'title': 'Buch XY', 'price': {'value': '12.50', 'currency': 'EUR'},
+     'condition': 'Neu', 'seller': {'username': 'topseller'},
+     'itemWebUrl': 'https://www.ebay.de/itm/123',
+     'image': {'imageUrl': 'https://i.ebayimg.com/images/g/abc/s-l225.jpg'},
+     'shippingOptions': [{'shippingCost': {'value': '0.00', 'currency': 'EUR'}}]},
+    {'title': 'Buch Z', 'price': {'value': '5.00', 'currency': 'EUR'},
+     'shippingOptions': [{'shippingCost': {'value': '3.90', 'currency': 'EUR'}}]},
+]}
+
+
+class EbayOfferTests(TestCase):
+    def setUp(self):
+        from . import runtime_settings
+        runtime_settings.set_setting('live_offers_enabled', True)
+
+    def test_parse_ebay(self):
+        from decimal import Decimal
+        from .offer_providers import _parse_ebay
+        offers = _parse_ebay(EBAY_RESPONSE, 10)
+        self.assertEqual(len(offers), 2)
+        self.assertEqual(offers[0].title, 'Buch XY')
+        self.assertEqual(offers[0].price, Decimal('12.50'))
+        self.assertEqual(offers[0].condition, 'Neu')
+        self.assertEqual(offers[0].seller, 'topseller')
+        self.assertEqual(offers[0].platform, 'eBay')
+        self.assertTrue(offers[0].cover.startswith('https://i.ebayimg.com'))
+        self.assertIn('kostenlos', offers[0].shipping)
+        self.assertIn('3.90', offers[1].shipping)
+
+    def test_ebay_gated_by_credentials(self):
+        from . import runtime_settings, offer_providers
+        from .price_search import PriceQuery
+        q = PriceQuery(q='x', kind='music')
+        runtime_settings.set_setting('ebay_client_id', '')
+        runtime_settings.set_setting('ebay_client_secret', '')
+        self.assertNotIn('ebay', [p.key for p in offer_providers.active_providers(q)])
+        runtime_settings.set_setting('ebay_client_id', 'id')
+        runtime_settings.set_setting('ebay_client_secret', 'secret')
+        self.assertIn('ebay', [p.key for p in offer_providers.active_providers(q)])
+
+    def test_ebay_all_categories(self):
+        from . import runtime_settings, offer_providers
+        from .price_search import PriceQuery
+        runtime_settings.set_setting('ebay_client_id', 'id')
+        runtime_settings.set_setting('ebay_client_secret', 'secret')
+        # eBay matches every kind (books, music, movies, mixed).
+        for kind in ('books', 'music', 'movies', ''):
+            keys = [p.key for p in offer_providers.active_providers(PriceQuery(q='x', kind=kind))]
+            self.assertIn('ebay', keys)

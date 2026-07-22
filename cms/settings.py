@@ -320,6 +320,10 @@ SECURE_CSP = {
         'https://coverartarchive.org', 'https://archive.org', 'https://*.archive.org',
         'https://image.tmdb.org', 'https://media.rawg.io',
         'https://commons.wikimedia.org', 'https://upload.wikimedia.org',
+        # Live-offer thumbnails (price search): AbeBooks/ZVAB, Booklooker,
+        # Discogs and eBay. Without these the browser's CSP blocks the images.
+        'https://pictures.abebooks.com', 'https://images.booklooker.de',
+        'https://i.discogs.com', 'https://*.ebayimg.com',
     ],
     'font-src': [CSP.SELF],
     'connect-src': [CSP.SELF],

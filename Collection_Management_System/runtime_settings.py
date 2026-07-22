@@ -225,6 +225,23 @@ REGISTRY: dict[str, SettingDef] = {
             kind='str', default='', max_length=128,
         ),
         SettingDef(
+            key='ebay_client_id',
+            label=_('eBay App-ID (Client-ID)'),
+            help_text=_('Aus dem kostenlosen eBay-Entwicklerkonto (developer.ebay.com → '
+                        '„Application Keys", Production). Schaltet echte eBay-Angebote '
+                        '(mit Bild, Preis, Zustand) im Preisvergleich frei. Leer = eBay '
+                        'wird nicht abgefragt.'),
+            kind='str', default='', max_length=120,
+        ),
+        SettingDef(
+            key='ebay_client_secret',
+            label=_('eBay Cert-ID (Client-Secret)'),
+            help_text=_('Das zur App-ID gehörende Client-Secret (Cert-ID) aus dem '
+                        'eBay-Entwicklerkonto. Wird nur serverseitig für die Anmeldung '
+                        'an der eBay-API verwendet.'),
+            kind='str', default='', max_length=120,
+        ),
+        SettingDef(
             key='book_offers_enabled',
             label=_('Buch-Angebote bündeln (Booklooker, AbeBooks, ZVAB)'),
             help_text=_('Durchsucht mehrere Buch-/Antiquariatsplattformen (Booklooker, '
