@@ -3504,3 +3504,41 @@ class OfferAggregationTests(TestCase):
         # Each offer shows a link to every platform it was found on.
         self.assertContains(resp, 'AbeBooks')
         self.assertContains(resp, 'ZVAB')
+
+
+ENRICH_HTML = (
+    '<div data-test-id="listing-item-12345">'
+    '<span data-test-id="listing-book-condition-0">Zustand: Gebraucht - Gut</span>'
+    '<span data-test-id="item-shipping-price-0">EUR 3,10 Versand</span>'
+    '<p data-test-id="description-0">Schoene Ausgabe, 168 S.</p>'
+    '<img src="https://pictures.abebooks.com/inventory/md/md12345.jpg">'
+    '</div>'
+    '<script type="application/ld+json">'
+    '[{"@type":"Book","name":"Buch A","bookFormat":"https://schema.org/Paperback",'
+    '"author":{"@type":"Person","name":"Hesse, Hermann:"},'
+    '"publisher":{"@type":"Organization","name":"Frankfurt : Suhrkamp [1984]."},'
+    '"offers":{"@type":"Offer","price":1.59,"priceCurrency":"EUR",'
+    '"itemCondition":"https://schema.org/UsedCondition",'
+    '"seller":{"@type":"Organization","name":"Der Buchecker"},"sku":"12345","url":"https://x/a"}}]'
+    '</script>'
+)
+
+
+class OfferEnrichmentTests(TestCase):
+    def test_publisher_year_split(self):
+        from .offer_providers import _publisher_year
+        self.assertEqual(_publisher_year('Berlin ; Frankfurt am Main : Suhrkamp [1984].'),
+                         ('Suhrkamp', '1984'))
+
+    def test_schema_offer_enriched(self):
+        from .offer_providers import _parse_schema_offers
+        o = _parse_schema_offers(ENRICH_HTML, 'AbeBooks', 8)[0]
+        self.assertEqual(o.author, 'Hesse, Hermann')
+        self.assertEqual(o.publisher, 'Suhrkamp')
+        self.assertEqual(o.year, '1984')
+        self.assertEqual(o.binding, 'Taschenbuch')
+        self.assertEqual(o.condition, 'Gebraucht - Gut')
+        self.assertEqual(o.shipping, 'EUR 3,10 Versand')
+        self.assertTrue(o.description.startswith('Schoene Ausgabe'))
+        self.assertTrue(o.cover.endswith('md12345.jpg'))
+        self.assertIn('Hesse, Hermann · Suhrkamp, 1984 · Taschenbuch', o.meta_line)

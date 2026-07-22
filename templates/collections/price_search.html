@@ -76,12 +76,19 @@
                 {% for offer in offers %}
                 <tr>
                     <td>
-                        <div class="d-flex align-items-center gap-2">
-                            {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:40px;width:auto" class="rounded border flex-shrink-0" loading="lazy">{% endif %}
-                            <span>{{ offer.title|truncatechars:80 }}</span>
+                        <div class="d-flex align-items-start gap-2">
+                            {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:56px;width:auto" class="rounded border flex-shrink-0" loading="lazy">{% endif %}
+                            <div style="min-width:0">
+                                <div class="fw-semibold">{{ offer.title|truncatechars:90 }}</div>
+                                {% if offer.meta_line %}<div class="text-muted small">{{ offer.meta_line }}</div>{% endif %}
+                                {% if offer.description %}<div class="text-muted" style="font-size:.75rem">{{ offer.description|truncatechars:140 }}</div>{% endif %}
+                            </div>
                         </div>
                     </td>
-                    <td class="text-muted small">{{ offer.condition|default:"—" }}</td>
+                    <td class="small">
+                        {{ offer.condition|default:"—" }}
+                        {% if offer.shipping %}<div class="text-muted" style="font-size:.75rem"><i class="bi bi-truck"></i> {{ offer.shipping }}</div>{% endif %}
+                    </td>
                     <td class="text-end text-nowrap fw-semibold">{{ offer.price_display|default:"—" }}</td>
                     <td class="small">
                         {% if offer.seller %}<span class="fw-semibold">{{ offer.seller }}</span>{% else %}<span class="fw-semibold">{{ offer.platform }}</span>{% endif %}

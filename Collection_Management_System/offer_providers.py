@@ -54,6 +54,13 @@ class Offer:
     url: str = ''                # link to the offer/listing
     cover: str = ''              # optional thumbnail URL
     platform: str = ''           # which site it was found on (Booklooker, …)
+    # Rich bibliographic detail (filled where the source provides it).
+    author: str = ''
+    year: str = ''
+    publisher: str = ''
+    binding: str = ''            # Taschenbuch / Gebunden / …
+    description: str = ''        # dealer's free-text note about the copy
+    shipping: str = ''           # shipping cost note, e.g. "zzgl. 3,10 € Versand"
     # Other platforms the *same* offer was found on, as (platform, url) pairs
     # (filled by deduplication) — each is a link to the same offer elsewhere.
     also_on: list[tuple[str, str]] = field(default_factory=list)
@@ -63,6 +70,19 @@ class Offer:
         if self.price is None:
             return ''
         return f'{self.price:.2f} {self.currency}'
+
+    @property
+    def meta_line(self) -> str:
+        """Compact 'Autor · Verlag, Jahr · Einband' line for the UI."""
+        parts = []
+        if self.author:
+            parts.append(self.author)
+        pub = ', '.join(p for p in (self.publisher, self.year) if p)
+        if pub:
+            parts.append(pub)
+        if self.binding:
+            parts.append(self.binding)
+        return ' · '.join(parts)
 
 
 @dataclass(frozen=True)
@@ -169,6 +189,10 @@ _BL_TITLE = re.compile(r'<span class="articleTitleLink">(.*?)</span>', re.S)
 _BL_LINK = re.compile(r"href='(/B%C3%BCcher/[^']*?/id/[^']*)'")
 _BL_COND = re.compile(r'Zustand:\s*([^<\n]+)')
 _BL_IMG = re.compile(r"(https://images\.booklooker\.de/[^'\"]+?\.jpg)")
+_BL_HEADLINE = re.compile(r"<h3 class='seo-headline notranslate'>(.*?)</h3>", re.S)
+# Booklooker prints the year right after the publisher headline: "…</h3>, 1980."
+_BL_YEAR = re.compile(r'</h3>\s*,\s*(1[4-9]\d\d|20\d\d)')
+_YEAR = re.compile(r'\b(1[4-9]\d\d|20\d\d)\b')
 
 
 def _text(fragment: str) -> str:
@@ -190,9 +214,14 @@ def _parse_booklooker(body: str, limit: int) -> list[Offer]:
         links = _BL_LINK.findall(segment)
         conditions = _BL_COND.findall(segment)
         images = _BL_IMG.findall(segment)
+        headlines = [_text(h) for h in _BL_HEADLINE.findall(segment)]
         title = _text(titles[-1]) if titles else ''
         if not title:
             continue
+        # Booklooker lists author then publisher as two <h3 class="seo-headline">.
+        author = headlines[0] if headlines else ''
+        publisher = headlines[1] if len(headlines) > 1 else ''
+        year_match = _BL_YEAR.search(segment)
         offers.append(Offer(
             title=title,
             price=price,
@@ -203,6 +232,9 @@ def _parse_booklooker(body: str, limit: int) -> list[Offer]:
                 'https://www.booklooker.de/',
             cover=images[0] if images else '',
             platform='Booklooker',
+            author=author[:120],
+            publisher=publisher[:120],
+            year=year_match.group(1) if year_match else '',
         ))
         if len(offers) >= limit:
             break
@@ -236,9 +268,57 @@ _CONDITION_MAP = {
 }
 
 
+_BINDING_MAP = {
+    'paperback': _('Taschenbuch'),
+    'hardcover': _('Gebunden'),
+    'ebook': _('E-Book'),
+    'audiobookformat': _('Hörbuch'),
+}
+
+
 def _schema_condition(value: str) -> str:
     key = (value or '').rstrip('/').rsplit('/', 1)[-1].lower()
     return str(_CONDITION_MAP.get(key, ''))
+
+
+def _binding_label(book_format: str) -> str:
+    key = (book_format or '').rstrip('/').rsplit('/', 1)[-1].lower()
+    return str(_BINDING_MAP.get(key, ''))
+
+
+def _publisher_year(publisher_name: str) -> tuple[str, str]:
+    """Split AbeBooks' "Ort : Verlag [Jahr]." into (publisher, year)."""
+    raw = _text(publisher_name)
+    year = ''
+    match = _YEAR.search(raw)
+    if match:
+        year = match.group(1)
+    # Drop the bracketed year and any leading place(s) before the last ':'.
+    without_year = re.sub(r'[\[\(]?\b(1[4-9]\d\d|20\d\d)\b[\]\).,]*', '', raw)
+    publisher = without_year.split(':')[-1].strip(' ,.;-')
+    return publisher[:120], year
+
+
+# Per-listing HTML enrichment (image, detailed condition, shipping, description).
+# AbeBooks/ZVAB wrap each listing in data-test-id="listing-item-<sku>", and the
+# JSON-LD offer carries the same sku — so we join the structured JSON with the
+# richer HTML fields by sku. All of this is best-effort: missing pieces are just
+# left blank.
+_AB_ITEM = re.compile(r'data-test-id="listing-item-(\d+)"')
+_AB_COND = re.compile(r'listing-book-condition-\d+"[^>]*>(.*?)</', re.S)
+_AB_SHIP = re.compile(r'item-shipping-price-\d+"[^>]*>(.*?)</', re.S)
+_AB_DESC = re.compile(r'description-\d+"[^>]*>(.*?)</p>', re.S)
+_AB_IMG = re.compile(r'<img[^>]+(?:data-src|src)="(https://pictures\.[^"]+?\.jpg)"')
+
+
+def _abebooks_blocks(body: str) -> dict[str, str]:
+    """Map each listing's sku -> its HTML block (from one listing-item to the next)."""
+    marks = [(m.group(1), m.start()) for m in _AB_ITEM.finditer(body)]
+    blocks: dict[str, str] = {}
+    for index, (sku, start) in enumerate(marks):
+        end = marks[index + 1][1] if index + 1 < len(marks) else len(body)
+        blocks.setdefault(sku, body[start:end])
+    return blocks
 
 
 def _iter_ld_nodes(data):
@@ -259,9 +339,12 @@ def _iter_ld_nodes(data):
 
 
 def _parse_schema_offers(body: str, platform: str, limit: int) -> list[Offer]:
-    """Parse schema.org JSON-LD offers out of an AbeBooks/ZVAB results page."""
+    """Parse AbeBooks/ZVAB results: schema.org JSON-LD for the structured core,
+    enriched per listing (by sku) with image, detailed condition, shipping and
+    the dealer's free-text note from the HTML."""
     if not body:
         return []
+    blocks = _abebooks_blocks(body)
     offers: list[Offer] = []
     for match in re.finditer(
             r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', body, re.S):
@@ -280,18 +363,53 @@ def _parse_schema_offers(body: str, platform: str, limit: int) -> list[Offer]:
             seller_node = offer_node.get('seller')
             if isinstance(seller_node, dict):
                 seller = str(seller_node.get('name') or '').strip()
+            author = ''
+            author_node = node.get('author')
+            if isinstance(author_node, dict):
+                author = _text(str(author_node.get('name') or '')).rstrip(':').strip()
+            publisher_node = node.get('publisher')
+            publisher, year = ('', '')
+            if isinstance(publisher_node, dict):
+                publisher, year = _publisher_year(str(publisher_node.get('name') or ''))
             image = node.get('image')
             if isinstance(image, list):
                 image = image[0] if image else ''
+
+            # Enrich from the matching HTML listing block.
+            sku = str(offer_node.get('sku') or '')
+            block = blocks.get(sku, '')
+            condition = _schema_condition(offer_node.get('itemCondition', ''))
+            shipping = description = ''
+            if block:
+                cond_match = _AB_COND.search(block)
+                if cond_match:
+                    condition = _text(cond_match.group(1)).replace('Zustand:', '').strip() or condition
+                ship_match = _AB_SHIP.search(block)
+                if ship_match:
+                    shipping = _text(ship_match.group(1))
+                desc_match = _AB_DESC.search(block)
+                if desc_match:
+                    description = _text(desc_match.group(1))[:280]
+                if not image:
+                    img_match = _AB_IMG.search(block)
+                    if img_match:
+                        image = img_match.group(1)
+
             offers.append(Offer(
                 title=_text(str(node.get('name') or ''))[:150],
                 price=price,
                 currency=str(offer_node.get('priceCurrency') or 'EUR'),
-                condition=_schema_condition(offer_node.get('itemCondition', '')),
+                condition=condition,
                 seller=seller,
                 url=str(offer_node.get('url') or node.get('url') or ''),
                 cover=str(image or ''),
                 platform=platform,
+                author=author[:120],
+                publisher=publisher,
+                year=year,
+                binding=_binding_label(str(node.get('bookFormat') or '')),
+                description=description,
+                shipping=shipping,
             ))
             if len(offers) >= limit:
                 return offers
