@@ -54,8 +54,9 @@ class Offer:
     url: str = ''                # link to the offer/listing
     cover: str = ''              # optional thumbnail URL
     platform: str = ''           # which site it was found on (Booklooker, …)
-    # Other platforms the *same* offer was found on (filled by deduplication).
-    also_on: list[str] = field(default_factory=list)
+    # Other platforms the *same* offer was found on, as (platform, url) pairs
+    # (filled by deduplication) — each is a link to the same offer elsewhere.
+    also_on: list[tuple[str, str]] = field(default_factory=list)
 
     @property
     def price_display(self) -> str:
@@ -81,6 +82,9 @@ class OfferProvider:
         return bool(get_setting(self.needs_setting))
 
     def matches(self, query: PriceQuery) -> bool:
+        # No category chosen (kind == '') → search everything (ViaLibri style).
+        if not query.kind:
+            return True
         return not self.kinds or query.kind in self.kinds
 
 
@@ -395,7 +399,7 @@ def _deduplicate(offers: list[Offer]) -> list[Offer]:
         if existing is None:
             seen[key] = offer
             kept.append(offer)
-        elif offer.platform and offer.platform not in existing.also_on \
-                and offer.platform != existing.platform:
-            existing.also_on.append(offer.platform)
+        elif offer.platform and offer.platform != existing.platform \
+                and offer.platform not in [p for p, _u in existing.also_on]:
+            existing.also_on.append((offer.platform, offer.url))
     return kept

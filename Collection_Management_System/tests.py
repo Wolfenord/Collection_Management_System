@@ -3469,8 +3469,8 @@ class OfferAggregationTests(TestCase):
             Offer(title='X', price=Decimal('5.00'), seller='Dealer B', platform='ZVAB'),
         ]
         result = _deduplicate(offers)
-        self.assertEqual(len(result), 2)                 # two distinct dealers
-        self.assertEqual(result[0].also_on, ['ZVAB'])    # same dealer merged
+        self.assertEqual(len(result), 2)                     # two distinct dealers
+        self.assertEqual(result[0].also_on, [('ZVAB', '')])  # same dealer merged, with link
 
     def test_fetch_offers_aggregates_and_dedups(self):
         from . import offer_providers
@@ -3501,4 +3501,6 @@ class OfferAggregationTests(TestCase):
                                    {'code': '9783518368121', 'kind': 'books'})
         self.assertContains(resp, 'Live-Angebote')
         self.assertContains(resp, 'Dealer X')
-        self.assertContains(resp, 'auch auf')
+        # Each offer shows a link to every platform it was found on.
+        self.assertContains(resp, 'AbeBooks')
+        self.assertContains(resp, 'ZVAB')

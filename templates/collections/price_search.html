@@ -82,19 +82,21 @@
                     <td class="text-muted small">{{ offer.condition|default:"—" }}</td>
                     <td class="text-end text-nowrap fw-semibold">{{ offer.price_display|default:"—" }}</td>
                     <td class="small">
-                        <span class="fw-semibold">{{ offer.platform }}</span>
-                        {% if offer.seller %}<div class="text-muted">{{ offer.seller }}</div>{% endif %}
-                        {% if offer.also_on %}
-                        <div class="text-muted" style="font-size:.75rem">
-                            <i class="bi bi-diagram-3"></i> {% trans "auch auf" %} {{ offer.also_on|join:", " }}
-                        </div>
-                        {% endif %}
+                        {% if offer.seller %}<span class="fw-semibold">{{ offer.seller }}</span>{% else %}<span class="fw-semibold">{{ offer.platform }}</span>{% endif %}
                     </td>
                     <td class="text-end">
-                        <a href="{{ offer.url }}" target="_blank" rel="noopener noreferrer nofollow"
-                           class="btn btn-sm btn-outline-primary text-nowrap">
-                            <i class="bi bi-box-arrow-up-right"></i> {% trans "Ansehen" %}
-                        </a>
+                        <div class="d-inline-flex flex-column align-items-end gap-1">
+                            <a href="{{ offer.url }}" target="_blank" rel="noopener noreferrer nofollow"
+                               class="btn btn-sm btn-outline-primary text-nowrap">
+                                <i class="bi bi-box-arrow-up-right"></i> {{ offer.platform }}
+                            </a>
+                            {% for src in offer.also_on %}
+                            <a href="{{ src.1 }}" target="_blank" rel="noopener noreferrer nofollow"
+                               class="btn btn-sm btn-outline-secondary text-nowrap">
+                                <i class="bi bi-box-arrow-up-right"></i> {{ src.0 }}
+                            </a>
+                            {% endfor %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
