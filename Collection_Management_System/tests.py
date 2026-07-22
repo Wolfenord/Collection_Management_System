@@ -3427,3 +3427,78 @@ class BookOfferScraperTests(TestCase):
                                    {'code': '9783518368121', 'kind': 'books'})
         self.assertContains(resp, 'Live-Angebote')
         self.assertContains(resp, 'Booklooker')
+
+
+SCHEMA_HTML = (
+    '<script type="application/ld+json">'
+    '[{"@type":"Book","name":"Buch A","url":"https://x/a","offers":{"@type":"Offer",'
+    '"price":9.99,"priceCurrency":"EUR","itemCondition":"https://schema.org/UsedCondition",'
+    '"seller":{"@type":"Organization","name":"Dealer X"},"url":"https://x/a"}},'
+    '{"@type":"Book","name":"Buch B","url":"https://x/b","offers":{"@type":"Offer",'
+    '"price":12.00,"priceCurrency":"EUR","itemCondition":"https://schema.org/NewCondition",'
+    '"seller":{"@type":"Organization","name":"Dealer Y"},"url":"https://x/b"}}]'
+    '</script>'
+)
+
+
+class OfferAggregationTests(TestCase):
+    def setUp(self):
+        from . import runtime_settings
+        runtime_settings.set_setting('live_offers_enabled', True)
+        runtime_settings.set_setting('book_offers_enabled', True)
+        self.user = User.objects.create_user('owner', 'o@e.de', 'pw')
+        self.client.force_login(self.user)
+
+    def test_schema_ld_parser(self):
+        from . import offer_providers
+        offers = offer_providers._parse_schema_offers(SCHEMA_HTML, 'AbeBooks', 8)
+        self.assertEqual(len(offers), 2)
+        self.assertEqual(offers[0].title, 'Buch A')
+        self.assertEqual(str(offers[0].price), '9.99')
+        self.assertEqual(offers[0].seller, 'Dealer X')
+        self.assertEqual(offers[0].condition, 'gebraucht')
+        self.assertEqual(offers[1].condition, 'neu')
+        self.assertEqual(offers[0].platform, 'AbeBooks')
+
+    def test_deduplicate_merges_same_dealer_price(self):
+        from decimal import Decimal
+        from .offer_providers import Offer, _deduplicate
+        offers = [
+            Offer(title='X', price=Decimal('5.00'), seller='Dealer A', platform='AbeBooks'),
+            Offer(title='X', price=Decimal('5.00'), seller='Dealer A', platform='ZVAB'),
+            Offer(title='X', price=Decimal('5.00'), seller='Dealer B', platform='ZVAB'),
+        ]
+        result = _deduplicate(offers)
+        self.assertEqual(len(result), 2)                 # two distinct dealers
+        self.assertEqual(result[0].also_on, ['ZVAB'])    # same dealer merged
+
+    def test_fetch_offers_aggregates_and_dedups(self):
+        from . import offer_providers
+        from .price_search import PriceQuery
+
+        def fake_text(url):
+            if 'booklooker' in url:
+                return ''  # no booklooker offers in this fixture
+            return SCHEMA_HTML  # abebooks + zvab return identical listings
+
+        with mock.patch.object(lookup_providers, '_http_get_text', side_effect=fake_text):
+            offers = offer_providers.fetch_offers(PriceQuery(code='9783518368121', kind='books'))
+        # AbeBooks + ZVAB each return Buch A/Buch B -> deduped to 2, each also_on the other.
+        self.assertEqual(len(offers), 2)
+        self.assertTrue(all(o.also_on for o in offers))
+
+    def test_book_providers_active_for_books(self):
+        from . import offer_providers
+        from .price_search import PriceQuery
+        labels = {p.label for p in offer_providers.active_providers(PriceQuery(code='1', kind='books'))}
+        self.assertEqual(labels, {'Booklooker', 'AbeBooks', 'ZVAB'})
+
+    def test_price_page_shows_aggregated_offers(self):
+        def fake_text(url):
+            return '' if 'booklooker' in url else SCHEMA_HTML
+        with mock.patch.object(lookup_providers, '_http_get_text', side_effect=fake_text):
+            resp = self.client.get(reverse('price_search'),
+                                   {'code': '9783518368121', 'kind': 'books'})
+        self.assertContains(resp, 'Live-Angebote')
+        self.assertContains(resp, 'Dealer X')
+        self.assertContains(resp, 'auch auf')

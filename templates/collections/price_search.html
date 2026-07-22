@@ -52,8 +52,13 @@
 {% if offers is not None %}
 <div class="card shadow-sm mb-4 border-primary-subtle"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-        <h2 class="h5 mb-0"><i class="bi bi-lightning-charge"></i> {% trans "Live-Angebote" %}</h2>
-        <span class="badge text-bg-light border">{% trans "Angaben ohne Gewähr" %}</span>
+        <div>
+            <h2 class="h5 mb-0"><i class="bi bi-lightning-charge"></i> {% trans "Live-Angebote" %}
+                {% if offers %}<span class="badge text-bg-primary">{{ offers|length }}</span>{% endif %}
+            </h2>
+            <div class="text-muted small">{% trans "Über mehrere Plattformen gebündelt und dedupliziert." %}</div>
+        </div>
+        <span class="badge text-bg-light border align-self-start">{% trans "Angaben ohne Gewähr" %}</span>
     </div>
     {% if offers %}
     <div class="table-responsive">
@@ -76,7 +81,15 @@
                     </td>
                     <td class="text-muted small">{{ offer.condition|default:"—" }}</td>
                     <td class="text-end text-nowrap fw-semibold">{{ offer.price_display|default:"—" }}</td>
-                    <td class="small">{{ offer.seller }}</td>
+                    <td class="small">
+                        <span class="fw-semibold">{{ offer.platform }}</span>
+                        {% if offer.seller %}<div class="text-muted">{{ offer.seller }}</div>{% endif %}
+                        {% if offer.also_on %}
+                        <div class="text-muted" style="font-size:.75rem">
+                            <i class="bi bi-diagram-3"></i> {% trans "auch auf" %} {{ offer.also_on|join:", " }}
+                        </div>
+                        {% endif %}
+                    </td>
                     <td class="text-end">
                         <a href="{{ offer.url }}" target="_blank" rel="noopener noreferrer nofollow"
                            class="btn btn-sm btn-outline-primary text-nowrap">

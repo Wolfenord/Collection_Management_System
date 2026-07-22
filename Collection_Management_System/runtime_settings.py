@@ -226,11 +226,14 @@ REGISTRY: dict[str, SettingDef] = {
         ),
         SettingDef(
             key='book_offers_enabled',
-            label=_('Buch-Angebote scrapen (Booklooker)'),
-            help_text=_('Holt echte Buch-Angebote (ViaLibri-artig) per ISBN von Booklooker '
-                        'und zeigt sie inline an. Benötigt keinen Schlüssel, ruft aber die '
-                        'Plattform live ab – bitte deren Nutzungsbedingungen beachten. '
-                        'Nur wirksam, wenn „Live-Angebote“ aktiv ist.'),
+            label=_('Buch-Angebote bündeln (Booklooker, AbeBooks, ZVAB)'),
+            help_text=_('Durchsucht mehrere Buch-/Antiquariatsplattformen (Booklooker, '
+                        'AbeBooks, ZVAB) gleichzeitig nach ISBN oder Titel – neue & '
+                        'gebrauchte Bücher, antiquarische Werke und Handschriften – und '
+                        'zeigt die Angebote gebündelt und dedupliziert an (ViaLibri-artig). '
+                        'Benötigt keinen Schlüssel, ruft die Plattformen aber live ab – '
+                        'bitte deren Nutzungsbedingungen beachten. Nur wirksam, wenn '
+                        '„Live-Angebote“ aktiv ist.'),
             kind='bool', default=False,
         ),
         SettingDef(

@@ -25,13 +25,16 @@ key or a maintained scraper is available.
 from __future__ import annotations
 
 import html
+import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Callable
 from urllib.parse import quote, urlencode
+
+from django.utils.translation import gettext_lazy as _
 
 from . import lookup_providers
 from .price_search import PriceQuery
@@ -39,7 +42,7 @@ from .price_search import PriceQuery
 log = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass
 class Offer:
     """One concrete listing found on a platform."""
 
@@ -47,9 +50,12 @@ class Offer:
     price: Decimal | None
     currency: str = 'EUR'
     condition: str = ''          # human text, '' if unknown
-    seller: str = ''             # platform / marketplace name
+    seller: str = ''             # dealer / marketplace name
     url: str = ''                # link to the offer/listing
     cover: str = ''              # optional thumbnail URL
+    platform: str = ''           # which site it was found on (Booklooker, …)
+    # Other platforms the *same* offer was found on (filled by deduplication).
+    also_on: list[str] = field(default_factory=list)
 
     @property
     def price_display(self) -> str:
@@ -133,9 +139,10 @@ def _discogs(query: PriceQuery, limit: int) -> list[Offer]:
             price=price,
             currency=str(lowest.get('currency') or 'EUR'),
             condition='',
-            seller=f'Discogs · {num} Angebot(e)',
+            seller=f'{num} Angebot(e) ab',
             url=f'https://www.discogs.com/sell/release/{release_id}?ev=rb',
             cover=str(result.get('thumb') or ''),
+            platform='Discogs',
         ))
         if len(offers) >= limit:
             break
@@ -187,10 +194,11 @@ def _parse_booklooker(body: str, limit: int) -> list[Offer]:
             price=price,
             currency='EUR',
             condition=_text(conditions[-1])[:60] if conditions else '',
-            seller='Booklooker',
+            seller='',
             url=('https://www.booklooker.de' + links[-1]) if links else
                 'https://www.booklooker.de/',
             cover=images[0] if images else '',
+            platform='Booklooker',
         ))
         if len(offers) >= limit:
             break
@@ -207,10 +215,111 @@ def _booklooker(query: PriceQuery, limit: int) -> list[Offer]:
     return _parse_booklooker(lookup_providers._http_get_text(url), limit)
 
 
+# --- AbeBooks & ZVAB (antiquarian, used & new books, manuscripts) -------------
+#
+# Both are the same platform (AbeBooks Inc.) and embed schema.org JSON-LD for
+# every listing — a stable, structured source (name, price, currency, condition,
+# real dealer name, url). We parse the JSON-LD instead of the obfuscated CSS, so
+# the parser is robust against layout changes. Because the two sites share the
+# same dealer network they often return the *same* offers — deduplication (see
+# ``fetch_offers``) collapses those, keyed by (title, dealer, price).
+
+_CONDITION_MAP = {
+    'newcondition': _('neu'),
+    'usedcondition': _('gebraucht'),
+    'refurbishedcondition': _('generalüberholt'),
+    'damagedcondition': _('beschädigt'),
+}
+
+
+def _schema_condition(value: str) -> str:
+    key = (value or '').rstrip('/').rsplit('/', 1)[-1].lower()
+    return str(_CONDITION_MAP.get(key, ''))
+
+
+def _iter_ld_nodes(data):
+    """Yield the flat product/offer nodes from a parsed JSON-LD document (in
+    document order), unwrapping @graph and ItemList structures."""
+    if isinstance(data, list):
+        for item in data:
+            yield from _iter_ld_nodes(item)
+    elif isinstance(data, dict):
+        if isinstance(data.get('@graph'), list):
+            for item in data['@graph']:
+                yield from _iter_ld_nodes(item)
+        elif isinstance(data.get('itemListElement'), list):
+            for element in data['itemListElement']:
+                yield from _iter_ld_nodes(element.get('item', element))
+        else:
+            yield data
+
+
+def _parse_schema_offers(body: str, platform: str, limit: int) -> list[Offer]:
+    """Parse schema.org JSON-LD offers out of an AbeBooks/ZVAB results page."""
+    if not body:
+        return []
+    offers: list[Offer] = []
+    for match in re.finditer(
+            r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', body, re.S):
+        try:
+            data = json.loads(match.group(1).strip())
+        except (json.JSONDecodeError, ValueError):
+            continue
+        for node in _iter_ld_nodes(data):
+            offer_node = node.get('offers') if isinstance(node, dict) else None
+            if not isinstance(offer_node, dict):
+                continue
+            price = _to_decimal(offer_node.get('price'))
+            if price is None:
+                continue
+            seller = ''
+            seller_node = offer_node.get('seller')
+            if isinstance(seller_node, dict):
+                seller = str(seller_node.get('name') or '').strip()
+            image = node.get('image')
+            if isinstance(image, list):
+                image = image[0] if image else ''
+            offers.append(Offer(
+                title=_text(str(node.get('name') or ''))[:150],
+                price=price,
+                currency=str(offer_node.get('priceCurrency') or 'EUR'),
+                condition=_schema_condition(offer_node.get('itemCondition', '')),
+                seller=seller,
+                url=str(offer_node.get('url') or node.get('url') or ''),
+                cover=str(image or ''),
+                platform=platform,
+            ))
+            if len(offers) >= limit:
+                return offers
+    return offers
+
+
+def _abebooks_like(base: str, platform: str, query: PriceQuery, limit: int) -> list[Offer]:
+    if query.isbn:
+        url = f'{base}/servlet/SearchResults?isbn={quote(query.isbn)}&sortby=17'
+    elif query.q.strip():
+        url = f'{base}/servlet/SearchResults?kn={quote(query.q.strip())}&sortby=17'
+    else:
+        return []
+    return _parse_schema_offers(lookup_providers._http_get_text(url), platform, limit)
+
+
+def _abebooks(query: PriceQuery, limit: int) -> list[Offer]:
+    return _abebooks_like('https://www.abebooks.de', 'AbeBooks', query, limit)
+
+
+def _zvab(query: PriceQuery, limit: int) -> list[Offer]:
+    return _abebooks_like('https://www.zvab.com', 'ZVAB', query, limit)
+
+
 OFFER_PROVIDERS: list[OfferProvider] = [
     OfferProvider(key='discogs', label='Discogs', fetch=_discogs,
                   kinds=('music',), needs_setting='discogs_token'),
     OfferProvider(key='booklooker', label='Booklooker', fetch=_booklooker,
+                  kinds=('books',), needs_setting='book_offers_enabled'),
+    OfferProvider(key='abebooks', label='AbeBooks', fetch=_abebooks,
+                  kinds=('books',), needs_setting='book_offers_enabled'),
+    OfferProvider(key='zvab', label='ZVAB', fetch=_zvab,
                   kinds=('books',), needs_setting='book_offers_enabled'),
 ]
 
@@ -256,4 +365,37 @@ def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 8,
             offers.extend(fut.result())
 
     offers.sort(key=lambda o: (o.price is None, o.price or Decimal(0)))
-    return offers
+    return _deduplicate(offers)
+
+
+def _norm(text: str) -> str:
+    """Lowercase, keep only alphanumerics — for fuzzy title/seller matching."""
+    return re.sub(r'[^a-z0-9]+', '', (text or '').lower())
+
+
+def _deduplicate(offers: list[Offer]) -> list[Offer]:
+    """Collapse the *same* offer found on several platforms into one row.
+
+    ViaLibri-style: antiquarian networks (AbeBooks, ZVAB, …) syndicate the same
+    dealer's listing, so an identical (dealer, price, title) tuple appearing on
+    two sites is one offer. We keep the first (cheapest, already sorted) and note
+    the other platforms in ``also_on``. Offers without a dealer name (e.g. a
+    marketplace aggregate) are keyed by (platform, title, price) so genuinely
+    distinct listings are never merged away.
+    """
+    kept: list[Offer] = []
+    seen: dict[tuple, Offer] = {}
+    for offer in offers:
+        price_key = str(offer.price)
+        if offer.seller:
+            key = (_norm(offer.seller), price_key, _norm(offer.title)[:40])
+        else:
+            key = (_norm(offer.platform), _norm(offer.title)[:40], price_key)
+        existing = seen.get(key)
+        if existing is None:
+            seen[key] = offer
+            kept.append(offer)
+        elif offer.platform and offer.platform not in existing.also_on \
+                and offer.platform != existing.platform:
+            existing.also_on.append(offer.platform)
+    return kept
