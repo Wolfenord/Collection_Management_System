@@ -332,7 +332,7 @@ def active_providers(query: PriceQuery) -> list[OfferProvider]:
     return [p for p in OFFER_PROVIDERS if p.available() and p.matches(query)]
 
 
-def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 8,
+def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 40,
                  timeout: int | None = None) -> list[Offer]:
     """All live offers for a query, from every available provider, price-sorted.
 
@@ -355,7 +355,9 @@ def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 8,
         # DB/cache itself (same pattern as lookup_providers' parallel search).
         lookup_providers._thread_timeout.value = timeout
         try:
-            return provider.fetch(query, limit_per_provider) or []
+            result = provider.fetch(query, limit_per_provider) or []
+            log.info('Offer provider %s returned %s offer(s)', provider.key, len(result))
+            return result
         except Exception:  # noqa: BLE001 — a bad provider must not break the page
             log.warning('Offer provider %s failed', provider.key, exc_info=True)
             return []

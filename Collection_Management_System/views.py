@@ -1261,13 +1261,24 @@ def _live_offers(request, query):
     and per-user throttled, because unlike the link-out cards this makes outbound
     requests. Returns a list (possibly empty) when active, else ``None`` (feature
     off / no provider) so the template can tell the two apart."""
-    if not get_setting('live_offers_enabled') or not query.has_query():
+    if not get_setting('live_offers_enabled'):
+        logger.info('Live offers OFF: live_offers_enabled is not set')
+        return None
+    if not query.has_query():
+        logger.info('Live offers skipped: empty query')
         return None
     from .offer_providers import active_providers, fetch_offers
-    if not active_providers(query):
+    providers = active_providers(query)
+    if not providers:
+        logger.info('Live offers: no provider matches query (kind=%r, code=%r, q=%r). '
+                    'Check that book_offers_enabled/discogs_token are set and the kind fits.',
+                    query.kind, query.code, query.q)
         return None
+    logger.info('Live offers: %s provider(s) active for kind=%r: %s',
+                len(providers), query.kind, [p.label for p in providers])
     from accounts.throttling import allow
     if not allow('offers', str(request.user.pk), max_requests=20, window_seconds=60):
+        logger.warning('Live offers throttled for %s', _who(request))
         return None
 
     import hashlib
@@ -1276,6 +1287,7 @@ def _live_offers(request, query):
     cache_key = f'offers:{digest}'
     cached = cache.get(cache_key)
     if cached is not None:
+        logger.info('Live offers: cache hit for %r (%s offers)', query.best_text, len(cached))
         return cached
     offers = fetch_offers(query)
     logger.info('Live offers fetched for %r (kind=%s): %s result(s) by %s',

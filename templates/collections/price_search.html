@@ -75,9 +75,11 @@
             <tbody>
                 {% for offer in offers %}
                 <tr>
-                    <td class="d-flex align-items-center gap-2">
-                        {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:32px" class="rounded border" loading="lazy">{% endif %}
-                        <span>{{ offer.title|truncatechars:70 }}</span>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:40px;width:auto" class="rounded border flex-shrink-0" loading="lazy">{% endif %}
+                            <span>{{ offer.title|truncatechars:80 }}</span>
+                        </div>
                     </td>
                     <td class="text-muted small">{{ offer.condition|default:"—" }}</td>
                     <td class="text-end text-nowrap fw-semibold">{{ offer.price_display|default:"—" }}</td>
