@@ -70,8 +70,29 @@
         <span class="badge text-bg-light border align-self-start">{% trans "Angaben ohne Gewähr" %}</span>
     </div>
     {% if offers %}
+    {% if offer_platforms|length > 1 or offer_categories|length > 1 %}
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" id="offerFilters">
+        {% if offer_platforms|length > 1 %}
+        <span class="small text-muted">{% trans "Plattform:" %}</span>
+        {% for p in offer_platforms %}
+        <label class="badge text-bg-light border user-select-none" style="cursor:pointer">
+            <input type="checkbox" class="form-check-input me-1" checked data-filter-platform="{{ p }}">{{ p }}
+        </label>
+        {% endfor %}
+        {% endif %}
+        {% if offer_categories|length > 1 %}
+        <span class="small text-muted ms-2">{% trans "Kategorie:" %}</span>
+        {% for c in offer_categories %}
+        <label class="badge text-bg-light border user-select-none" style="cursor:pointer">
+            <input type="checkbox" class="form-check-input me-1" checked data-filter-category="{{ c }}">{{ c }}
+        </label>
+        {% endfor %}
+        {% endif %}
+        <span class="small text-muted ms-auto" id="offerFilterCount"></span>
+    </div>
+    {% endif %}
     <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle mb-0">
+        <table class="table table-sm table-hover align-middle mb-0" id="offersTable">
             <thead class="table-light">
                 <tr>
                     <th>{% trans "Angebot" %}</th>
@@ -83,7 +104,7 @@
             </thead>
             <tbody>
                 {% for offer in offers %}
-                <tr>
+                <tr data-platform="{{ offer.platform }}" data-category="{{ offer.category }}">
                     <td>
                         <div class="d-flex align-items-start gap-2">
                             {% if offer.cover %}<img src="{{ offer.cover }}" alt="" style="height:56px;width:auto" class="rounded border flex-shrink-0" loading="lazy">{% endif %}
@@ -93,6 +114,7 @@
                                     {{ offer.title|truncatechars:90 }}
                                 </div>
                                 {% if offer.meta_line %}<div class="text-muted small">{{ offer.meta_line }}</div>{% endif %}
+                                {% if offer.category %}<span class="badge text-bg-light border" style="font-size:.65rem">{{ offer.category }}</span>{% endif %}
                                 {% if offer.description %}<div class="text-muted" style="font-size:.75rem">{{ offer.description|truncatechars:140 }}</div>{% endif %}
                             </div>
                         </div>
@@ -209,4 +231,41 @@
 {% block scripts %}
 <script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
 <script src="{% static 'js/scanner.js' %}"></script>
+<script nonce="{{ csp_nonce }}">
+// Quick refinement of the fetched offers: platform/category chips toggle rows
+// client-side — no refetch, instant narrowing.
+(function () {
+    const bar = document.getElementById('offerFilters');
+    const table = document.getElementById('offersTable');
+    if (!bar || !table) return;
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    const count = document.getElementById('offerFilterCount');
+
+    function checkedSet(attr) {
+        return new Set(Array.from(bar.querySelectorAll('[' + attr + ']:checked'))
+            .map(function (c) { return c.getAttribute(attr); }));
+    }
+
+    function apply() {
+        const hasPlatform = !!bar.querySelector('[data-filter-platform]');
+        const hasCategory = !!bar.querySelector('[data-filter-category]');
+        const okPlatform = checkedSet('data-filter-platform');
+        const okCategory = checkedSet('data-filter-category');
+        let visible = 0;
+        rows.forEach(function (tr) {
+            const platform = tr.getAttribute('data-platform') || '';
+            const category = tr.getAttribute('data-category') || '';
+            let show = true;
+            if (hasPlatform && platform && !okPlatform.has(platform)) show = false;
+            if (hasCategory && category && !okCategory.has(category)) show = false;
+            tr.classList.toggle('d-none', !show);
+            if (show) visible++;
+        });
+        if (count) count.textContent = visible + ' / ' + rows.length;
+    }
+
+    bar.addEventListener('change', apply);
+    apply();
+})();
+</script>
 {% endblock %}

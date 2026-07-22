@@ -1307,11 +1307,15 @@ def price_search_page(request):
     providers with an official API (see offer_providers.py), off by default."""
     form = price_search.PriceSearchForm(request.GET or None)
     query = form.to_query()
+    offers = _live_offers(request, query)
     return render(request, 'collections/price_search.html', {
         'form': form,
         'query': query,
         'links': price_search.build_links(query),
-        'offers': _live_offers(request, query),
+        'offers': offers,
+        # Quick client-side refinement chips over the fetched offers.
+        'offer_platforms': sorted({o.platform for o in (offers or []) if o.platform}),
+        'offer_categories': sorted({o.category for o in (offers or []) if o.category}),
         'live_offers_enabled': get_setting('live_offers_enabled'),
     })
 

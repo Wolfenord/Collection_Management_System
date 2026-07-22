@@ -64,6 +64,9 @@ class Offer:
     binding: str = ''            # Taschenbuch / Gebunden / …
     description: str = ''        # dealer's free-text note about the copy
     shipping: str = ''           # shipping cost note, e.g. "zzgl. 3,10 € Versand"
+    category: str = ''           # coarse category (Buch, Musik, eBay category, …)
+    # How well the offer matches the query text (0..1, filled by fetch_offers).
+    relevance: float = 0.0
     # Other platforms the *same* offer was found on, as (platform, url) pairs
     # (filled by deduplication) — each is a link to the same offer elsewhere.
     also_on: list[tuple[str, str]] = field(default_factory=list)
@@ -114,6 +117,17 @@ class OfferProvider:
         return not self.kinds or query.kind in self.kinds
 
 
+def _setting(key: str):
+    """Read a runtime setting, tolerating a REGISTRY that doesn't know the key
+    yet (e.g. a partially deployed release) — a provider must never 500 the
+    page just because its setting is missing."""
+    from .runtime_settings import REGISTRY, get_setting
+    if key not in REGISTRY:
+        log.warning('Runtime setting %r unknown to this deployment — provider stays off', key)
+        return None
+    return get_setting(key)
+
+
 def _to_decimal(value) -> Decimal | None:
     try:
         return Decimal(str(value))
@@ -128,8 +142,7 @@ _DISCOGS_RELEASES = 4  # how many top releases to price-check per search
 
 
 def _discogs_token() -> str:
-    from .runtime_settings import get_setting
-    return (get_setting('discogs_token') or '').strip()
+    return (_setting('discogs_token') or '').strip()
 
 
 def _discogs(query: PriceQuery, limit: int) -> list[Offer]:
@@ -173,6 +186,7 @@ def _discogs(query: PriceQuery, limit: int) -> list[Offer]:
             url=f'https://www.discogs.com/sell/release/{release_id}?ev=rb',
             cover=str(result.get('thumb') or ''),
             platform='Discogs',
+            category=str(_('Musik')),
         ))
         if len(offers) >= limit:
             break
@@ -241,6 +255,7 @@ def _parse_booklooker(body: str, limit: int) -> list[Offer]:
             author=author[:120],
             publisher=publisher[:120],
             year=year_match.group(1) if year_match else '',
+            category=str(_('Buch')),
         ))
         if len(offers) >= limit:
             break
@@ -421,6 +436,7 @@ def _parse_schema_offers(body: str, platform: str, limit: int) -> list[Offer]:
                 binding=_binding_label(str(node.get('bookFormat') or '')),
                 description=description,
                 shipping=shipping,
+                category=str(_('Buch')),
             ))
             if len(offers) >= limit:
                 return offers
@@ -457,14 +473,9 @@ _EBAY_BROWSE = 'https://api.ebay.com/buy/browse/v1/item_summary/search'
 
 
 def _ebay_creds() -> tuple[str, str]:
-    from .runtime_settings import REGISTRY, get_setting
-    # Be resilient to a version skew (e.g. mid-deploy) where this module knows
-    # about the eBay keys but the loaded settings registry does not yet — never
-    # let a missing key 500 the whole price page; just treat eBay as unconfigured.
-    if 'ebay_client_id' not in REGISTRY or 'ebay_client_secret' not in REGISTRY:
-        return '', ''
-    return ((get_setting('ebay_client_id') or '').strip(),
-            (get_setting('ebay_client_secret') or '').strip())
+    # _setting() tolerates version skew (mid-deploy): unknown key -> eBay off.
+    return ((_setting('ebay_client_id') or '').strip(),
+            (_setting('ebay_client_secret') or '').strip())
 
 
 def _ebay_ready() -> bool:
@@ -532,6 +543,8 @@ def _parse_ebay(data: dict, limit: int) -> list[Offer]:
                 shipping = str(_('kostenloser Versand'))
             elif value is not None:
                 shipping = f'zzgl. {value:.2f} {cost.get("currency", "EUR")} Versand'
+        categories = item.get('categories') or []
+        category = str(categories[0].get('categoryName', '')) if categories else ''
         offers.append(Offer(
             title=str(item.get('title') or '')[:150],
             price=price,
@@ -542,6 +555,7 @@ def _parse_ebay(data: dict, limit: int) -> list[Offer]:
             cover=str((item.get('image') or {}).get('imageUrl') or ''),
             platform='eBay',
             shipping=shipping,
+            category=category[:60],
         ))
     return offers
 
@@ -561,7 +575,15 @@ OFFER_PROVIDERS: list[OfferProvider] = [
 
 
 def active_providers(query: PriceQuery) -> list[OfferProvider]:
-    return [p for p in OFFER_PROVIDERS if p.available() and p.matches(query)]
+    active = []
+    for provider in OFFER_PROVIDERS:
+        try:
+            if provider.available() and provider.matches(query):
+                active.append(provider)
+        except Exception:  # noqa: BLE001 — a broken gate must never 500 the page
+            log.warning('Offer provider %s availability check failed', provider.key,
+                        exc_info=True)
+    return active
 
 
 def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 40,
@@ -604,8 +626,23 @@ def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 40,
 
     offers = _filter_by_year(offers, query.year_from, query.year_to)
     offers = _filter_by_price(offers, query.min_price, query.max_price)
+    _score_relevance(offers, query)
     offers = _deduplicate(offers)
-    return _sort_offers(offers, query.sort)
+    return _sort_offers(offers, query.sort, query.q)
+
+
+def _score_relevance(offers: list[Offer], query: PriceQuery) -> None:
+    """0..1 per offer: how many of the query's words appear in title/author.
+
+    Rewards offers that actually contain the searched title/author words, so a
+    text search ranks matching editions above keyword-adjacent noise."""
+    tokens = [t for t in re.split(r'\W+', query.q.lower()) if len(t) > 2]
+    if not tokens:
+        return
+    for offer in offers:
+        haystack = f'{offer.title} {offer.author}'.lower()
+        hits = sum(1 for token in tokens if token in haystack)
+        offer.relevance = hits / len(tokens)
 
 
 def _filter_by_price(offers: list[Offer], min_price, max_price) -> list[Offer]:
@@ -651,13 +688,16 @@ def _filter_by_year(offers: list[Offer], year_from, year_to) -> list[Offer]:
     return kept
 
 
-def _sort_offers(offers: list[Offer], sort: str) -> list[Offer]:
+def _sort_offers(offers: list[Offer], sort: str, q: str = '') -> list[Offer]:
     if sort == 'year_desc':
         offers.sort(key=lambda o: (_offer_year(o) is None, -(_offer_year(o) or 0)))
     elif sort == 'year_asc':
         offers.sort(key=lambda o: (_offer_year(o) is None, _offer_year(o) or 0))
-    else:  # default and 'price'
+    elif sort == 'price' or not q.strip():
         offers.sort(key=lambda o: (o.price is None, o.price or Decimal(0)))
+    else:
+        # Default with a text query: best match first, then cheapest.
+        offers.sort(key=lambda o: (-o.relevance, o.price is None, o.price or Decimal(0)))
     return offers
 
 
