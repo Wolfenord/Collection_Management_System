@@ -11,6 +11,7 @@ touching the crontab:
   * ``loan_reminder_interval_days``  minimum days between reminders per loan
 """
 
+import logging
 from datetime import timedelta
 
 from django.core.mail import send_mail
@@ -21,6 +22,8 @@ from django.utils.translation import gettext as _
 
 from Collection_Management_System.models import Loan
 from Collection_Management_System.runtime_settings import get_setting
+
+logger = logging.getLogger('Collection_Management_System.loan_reminders')
 
 
 class Command(BaseCommand):
@@ -73,6 +76,8 @@ class Command(BaseCommand):
             )
             Loan.objects.filter(pk__in=[l.pk for l in owner_loans]).update(reminder_sent_at=now)
             sent += 1
+            logger.info('Overdue reminder sent to %s (%s loan(s))', owner, len(owner_loans))
             self.stdout.write(f'{owner}: {len(owner_loans)} overdue loan(s) reported')
 
+        logger.info('send_loan_reminders finished: %s reminder mail(s) sent', sent)
         self.stdout.write(self.style.SUCCESS(f'{sent} reminder mail(s) sent.'))

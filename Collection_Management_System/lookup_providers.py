@@ -28,6 +28,7 @@ monkeypatch it to return canned payloads without hitting the network.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 import urllib.error
@@ -39,6 +40,8 @@ from typing import Callable
 from xml.etree import ElementTree
 
 from django.utils.translation import gettext_lazy as _
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Shared attribute vocabulary
@@ -125,7 +128,8 @@ def _http_get_json(url: str) -> dict | list | None:
         with urllib.request.urlopen(request, timeout=_http_timeout()) as response:
             charset = response.headers.get_content_charset() or 'utf-8'
             return json.loads(response.read().decode(charset))
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+        logger.warning('External JSON fetch failed (%s): %s', url.split('?', 1)[0], exc)
         return None
 
 
@@ -139,7 +143,8 @@ def _http_get_text(url: str) -> str | None:
         with urllib.request.urlopen(request, timeout=_http_timeout()) as response:
             charset = response.headers.get_content_charset() or 'utf-8'
             return response.read().decode(charset, errors='replace')
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        logger.warning('External text fetch failed (%s): %s', url.split('?', 1)[0], exc)
         return None
 
 

@@ -177,17 +177,55 @@ PASSWORD_HASHERS = [
 
 # Security-event log (failed-login lockouts, throttle hits, passkey failures).
 # Goes to stderr by default; point a handler at a file/syslog in production.
+# Logging
+# ---------------------------------------------------------------------------
+# One rotating log file per day (rotates at midnight -> "cms.log" holds today,
+# "cms.log.YYYY-MM-DD" the previous days), kept for LOG_RETENTION_DAYS. Every
+# component logs here: Django (incl. 500 tracebacks via django.request), the
+# security audit trail (cms.security) and the app's own module loggers
+# (Collection_Management_System.*, accounts.*). Tunable via the environment:
+#   LOG_DIR, LOG_LEVEL (default INFO), LOG_RETENTION_DAYS (default 30).
+#
+# Note: with several gunicorn workers all processes write the same file; the
+# midnight rotation can race. For a self-hosted small deployment this is fine;
+# for stricter setups point LOG_DIR at a tmpfs + external logrotate, or run a
+# single worker.
+LOG_DIR = Path(conf.get('LOG_DIR') or (BASE_DIR / 'logs'))
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_LEVEL = conf.get('LOG_LEVEL', 'INFO').upper()
+LOG_RETENTION_DAYS = conf.get_int('LOG_RETENTION_DAYS', 30)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'security': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
     },
     'handlers': {
-        'security_console': {'class': 'logging.StreamHandler', 'formatter': 'security'},
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'verbose'},
+        'file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': str(LOG_DIR / 'cms.log'),
+            'when': 'midnight',
+            'backupCount': LOG_RETENTION_DAYS,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
     },
+    # Root: catches everything not handled by a more specific logger, so no
+    # component is silently missed. Children propagate up to these handlers.
+    'root': {'handlers': ['console', 'file'], 'level': LOG_LEVEL},
     'loggers': {
-        'cms.security': {'handlers': ['security_console'], 'level': 'INFO', 'propagate': False},
+        'django': {'level': 'INFO', 'propagate': True},
+        # 500s (unhandled exceptions) with full traceback land here.
+        'django.request': {'level': 'ERROR', 'propagate': True},
+        'django.security': {'level': 'WARNING', 'propagate': True},
+        'cms.security': {'level': 'INFO', 'propagate': True},
+        'Collection_Management_System': {'level': LOG_LEVEL, 'propagate': True},
+        'accounts': {'level': LOG_LEVEL, 'propagate': True},
     },
 }
 

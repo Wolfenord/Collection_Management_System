@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 import json
+import logging
 import os
 import re
 import uuid
@@ -34,6 +35,14 @@ from .services import collections_for_user, create_default_fields
 # Field types that can't be edited inline in the items table (they need the full
 # form: file pickers, multi-select). Everything else is a single-value input.
 INLINE_NONEDITABLE_TYPES = {FieldType.IMAGE, FieldType.FILE, FieldType.MULTICHOICE}
+
+logger = logging.getLogger(__name__)
+
+
+def _who(request) -> str:
+    """Short 'user#id' tag for log lines (audit trail)."""
+    user = getattr(request, 'user', None)
+    return f'{getattr(user, "username", "?")}#{getattr(user, "pk", "?")}'
 
 
 def _get_collection_for(user, pk, *, need_edit=False) -> Collection:
@@ -135,6 +144,8 @@ def collection_create(request):
             collection = form.save(commit=False)
             collection.owner = request.user
             collection.save()
+            logger.info('Collection %s ("%s") created by %s',
+                        collection.pk, collection.name, _who(request))
             template = form.cleaned_data.get('template')
             preset = form.cleaned_data.get('preset')
             if template:
@@ -272,6 +283,7 @@ def collection_delete(request, pk):
     if request.method == 'POST':
         name = collection.name
         collection.delete()
+        logger.warning('Collection %s ("%s") deleted by %s', pk, name, _who(request))
         messages.success(request, _('Sammlung „%(name)s“ wurde gelöscht.') % {'name': name})
         return redirect('dashboard')
     return render(request, 'collections/confirm_delete.html', {
@@ -398,7 +410,9 @@ def field_create(request, pk):
     if request.method == 'POST':
         form = FieldDefinitionForm(request.POST, collection=collection)
         if form.is_valid():
-            form.save()
+            fd = form.save()
+            logger.info('Field "%s" (%s) created in collection %s by %s',
+                        fd.label, fd.field_type, collection.pk, _who(request))
             messages.success(request, _('Feld hinzugefügt.'))
             return redirect('collection_detail', pk=collection.pk)
     else:
@@ -458,6 +472,8 @@ def field_delete(request, pk, field_pk):
                 item.save(update_fields=['values', 'updated_at'])
         ItemAsset.objects.filter(item__collection=collection, field_key=key).delete()
         field.delete()
+        logger.info('Field "%s" deleted from collection %s by %s',
+                    label, collection.pk, _who(request))
         messages.success(request, _('Feld „%(label)s“ und zugehörige Daten wurden entfernt.') % {'label': label})
         return redirect('collection_detail', pk=collection.pk)
     return render(request, 'collections/confirm_delete.html', {
@@ -508,6 +524,8 @@ def type_delete(request, pk, type_pk):
     if request.method == 'POST':
         name = item_type.name
         item_type.delete()
+        logger.info('Item type "%s" deleted from collection %s by %s',
+                    name, collection.pk, _who(request))
         messages.success(request, _('Art „%(name)s“ wurde entfernt.') % {'name': name})
         return redirect('collection_detail', pk=collection.pk)
     count = collection.items.filter(item_type=item_type).count()
@@ -607,6 +625,8 @@ def item_lookup(request, pk):
     if not query:
         return JsonResponse({'ok': False, 'error': _('Kein Suchbegriff übergeben.')}, status=400)
 
+    logger.info('External code lookup q=%r provider=%s by %s',
+                query, provider.label, _who(request))
     data = provider.fetch(query)  # {attribute: value}
     fields, covers = _map_lookup_data(collection, data)
 
@@ -661,6 +681,8 @@ def item_search(request, pk):
     if not query:
         return JsonResponse({'ok': False, 'error': _('Kein Suchbegriff übergeben.')}, status=400)
 
+    logger.info('External text search q=%r provider=%s by %s',
+                query, provider.label, _who(request))
     results = []
     for data in provider.search(query)[:10]:
         fields, covers = _map_lookup_data(collection, data)
@@ -805,6 +827,8 @@ def item_create(request, pk):
         form = DynamicItemForm(request.POST, request.FILES, collection=collection)
         if form.is_valid():
             item = form.save(user=request.user)
+            logger.info('Item created %s in collection %s by %s',
+                        item.pk, collection.pk, _who(request))
             # "Speichern & nächster": stay in fast capture mode for an inventory.
             # Pre-fill the just-used "Art" so a batch of the same kind is quick.
             if 'save_and_new' in request.POST:
@@ -835,6 +859,8 @@ def item_edit(request, pk, item_pk):
         form = DynamicItemForm(request.POST, request.FILES, collection=collection, instance=item)
         if form.is_valid():
             form.save(user=request.user)
+            logger.info('Item updated %s in collection %s by %s',
+                        item.pk, collection.pk, _who(request))
             messages.success(request, _('Gegenstand aktualisiert.'))
             return redirect('item_detail', pk=collection.pk, item_pk=item.pk)
     else:
@@ -873,6 +899,8 @@ def item_inline_update(request, pk, item_pk):
     try:
         cleaned = field.clean(raw)
     except dj_forms.ValidationError as exc:
+        logger.info('Inline update rejected on %s.%s by %s: %s',
+                    item.pk, key, _who(request), '; '.join(exc.messages))
         return JsonResponse({'ok': False, 'error': ' '.join(exc.messages)}, status=400)
 
     values = dict(item.values or {})
@@ -882,6 +910,7 @@ def item_inline_update(request, pk, item_pk):
         values[key] = _to_jsonable(cleaned)
     item.values = values
     item.save(update_fields=['values', 'updated_at'])
+    logger.info('Inline update %s.%s by %s', item.pk, key, _who(request))
 
     cell = render_cell(fd, values.get(key))
     return JsonResponse({'ok': True, 'display': cell.value or '–',
@@ -911,6 +940,7 @@ def item_lend(request, pk, item_pk):
             borrower_contact=(request.POST.get('borrower_contact') or '').strip()[:300],
             note=(request.POST.get('note') or '').strip()[:255],
             created_by=request.user)
+        logger.info('Item %s lent to "%s" by %s', item.pk, loan.borrower, _who(request))
         # "Leihvertrag erstellen" ticked → jump straight to the printable PDF.
         if request.POST.get('make_agreement'):
             messages.success(request, _('Als verliehen markiert. Leihvertrag wird geöffnet.'))
@@ -927,6 +957,8 @@ def item_loan_agreement(request, pk, item_pk, loan_pk):
     item = get_object_or_404(Item, pk=item_pk, collection=collection)
     loan = get_object_or_404(Loan, pk=loan_pk, item=item)
     from . import contracts
+    logger.info('Loan agreement PDF for loan %s (item %s) by %s',
+                loan.pk, item.pk, _who(request))
     pdf = contracts.build_loan_agreement_pdf(collection, item, loan)
     disposition = 'attachment' if request.GET.get('download') else 'inline'
     filename = f'leihvertrag-{codes.item_short_code(item)}.pdf'
@@ -944,6 +976,7 @@ def item_return(request, pk, item_pk):
     if loan:
         loan.returned_at = timezone.localdate()
         loan.save(update_fields=['returned_at'])
+        logger.info('Item %s returned by %s', item.pk, _who(request))
         messages.success(request, _('Rückgabe vermerkt.'))
     return redirect('item_detail', pk=collection.pk, item_pk=item.pk)
 
@@ -987,6 +1020,8 @@ def collection_import(request, pk):
                 messages.error(request, _('Die Datei enthält keine Datenzeilen oder konnte nicht gelesen werden.'))
             else:
                 result = imports.import_table(collection, rows, user=request.user)
+                logger.info('Import into collection %s by %s: %s created (%s data rows)',
+                            collection.pk, _who(request), result['created'], len(rows) - 1)
                 messages.success(request, _('%(count)s Gegenstände importiert.')
                                  % {'count': result['created']})
     return render(request, 'collections/import.html',
@@ -1079,6 +1114,8 @@ def items_bulk(request, pk):
         messages.info(request, _('Keine Gegenstände ausgewählt.'))
     elif action == 'delete':
         items.update(deleted_at=timezone.now())
+        logger.info('Bulk trashed %s items in collection %s by %s',
+                    count, collection.pk, _who(request))
         messages.success(request, _('%(count)s Gegenstände in den Papierkorb verschoben.')
                          % {'count': count})
     elif action == 'set_type':
@@ -1142,6 +1179,8 @@ def item_delete(request, pk, item_pk):
     item = get_object_or_404(Item, pk=item_pk, collection=collection)
     if request.method == 'POST':
         item.soft_delete()
+        logger.info('Item %s trashed in collection %s by %s',
+                    item.pk, collection.pk, _who(request))
         messages.success(request, _('Gegenstand in den Papierkorb verschoben.'))
         return redirect('collection_detail', pk=collection.pk)
     return render(request, 'collections/confirm_delete.html', {
@@ -1239,6 +1278,8 @@ def _live_offers(request, query):
     if cached is not None:
         return cached
     offers = fetch_offers(query)
+    logger.info('Live offers fetched for %r (kind=%s): %s result(s) by %s',
+                query.best_text, query.kind, len(offers), _who(request))
     cache.set(cache_key, offers, 30 * 60)
     return offers
 
@@ -1351,8 +1392,11 @@ def collection_restore(request):
             try:
                 collection, stats = restore.restore_backup(upload, request.user)
             except restore.RestoreError as exc:
+                logger.warning('Backup restore failed for %s: %s', _who(request), exc)
                 messages.error(request, str(exc))
             else:
+                logger.info('Backup restored as collection %s by %s: %s items, %s files',
+                            collection.pk, _who(request), stats['items'], stats['files'])
                 for warning in stats['warnings'][:10]:
                     messages.warning(request, warning)
                 messages.success(
