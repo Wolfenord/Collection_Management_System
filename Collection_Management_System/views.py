@@ -1283,7 +1283,8 @@ def _live_offers(request, query):
 
     import hashlib
     from django.core.cache import cache
-    raw = f'{query.best_text}|{query.kind}|{query.year_from}|{query.year_to}|{query.sort}'
+    raw = (f'{query.best_text}|{query.kind}|{query.year_from}|{query.year_to}'
+           f'|{query.min_price}|{query.max_price}|{query.sort}')
     digest = hashlib.md5(raw.lower().encode()).hexdigest()
     cache_key = f'offers:{digest}'
     cached = cache.get(cache_key)

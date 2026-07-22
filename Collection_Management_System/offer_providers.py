@@ -394,6 +394,11 @@ def _parse_schema_offers(body: str, platform: str, limit: int) -> list[Offer]:
                     img_match = _AB_IMG.search(block)
                     if img_match:
                         image = img_match.group(1)
+            # Fallback: many dealers only state the year in the free-text note.
+            if not year and description:
+                desc_year = _YEAR.search(description)
+                if desc_year:
+                    year = desc_year.group(1)
 
             offers.append(Offer(
                 title=_text(str(node.get('name') or ''))[:150],
@@ -489,8 +494,27 @@ def fetch_offers(query: PriceQuery, *, limit_per_provider: int = 40,
             offers.extend(fut.result())
 
     offers = _filter_by_year(offers, query.year_from, query.year_to)
+    offers = _filter_by_price(offers, query.min_price, query.max_price)
     offers = _deduplicate(offers)
     return _sort_offers(offers, query.sort)
+
+
+def _filter_by_price(offers: list[Offer], min_price, max_price) -> list[Offer]:
+    """Keep offers whose price is within [min_price, max_price] (offers without a
+    price are kept)."""
+    if min_price is None and max_price is None:
+        return offers
+    kept = []
+    for offer in offers:
+        if offer.price is None:
+            kept.append(offer)
+            continue
+        if min_price is not None and offer.price < min_price:
+            continue
+        if max_price is not None and offer.price > max_price:
+            continue
+        kept.append(offer)
+    return kept
 
 
 def _offer_year(offer: Offer) -> int | None:

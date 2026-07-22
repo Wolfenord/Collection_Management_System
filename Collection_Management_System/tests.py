@@ -3581,3 +3581,42 @@ class OfferYearFilterTests(TestCase):
         form = PriceSearchForm({'q': 'x', 'year_from': '1900', 'year_to': '1950'})
         query = form.to_query()
         self.assertEqual((query.year_from, query.year_to), (1900, 1950))
+
+
+class OfferPriceFilterTests(TestCase):
+    def _offers(self):
+        from decimal import Decimal
+        from .offer_providers import Offer
+        return [
+            Offer(title='A', price=Decimal('3.00'), platform='AbeBooks'),
+            Offer(title='B', price=Decimal('10.00'), platform='ZVAB'),
+            Offer(title='C', price=Decimal('25.00'), platform='Booklooker'),
+            Offer(title='D', price=None, platform='Booklooker'),
+        ]
+
+    def test_price_range(self):
+        from decimal import Decimal
+        from .offer_providers import _filter_by_price
+        result = _filter_by_price(self._offers(), Decimal('5'), Decimal('20'))
+        self.assertEqual({o.title for o in result}, {'B', 'D'})  # 3 & 25 out, None kept
+
+    def test_price_min_only(self):
+        from decimal import Decimal
+        from .offer_providers import _filter_by_price
+        result = _filter_by_price(self._offers(), Decimal('10'), None)
+        self.assertEqual({o.title for o in result}, {'B', 'C', 'D'})
+
+    def test_fetch_offers_applies_price_and_year(self):
+        from decimal import Decimal
+        from . import runtime_settings, offer_providers
+        from .price_search import PriceQuery
+        runtime_settings.set_setting('live_offers_enabled', True)
+        runtime_settings.set_setting('book_offers_enabled', True)
+
+        def fake_text(url):
+            return '' if 'booklooker' in url else SCHEMA_HTML  # Buch A 9.99, Buch B 12.00
+        with mock.patch.object(lookup_providers, '_http_get_text', side_effect=fake_text):
+            offers = offer_providers.fetch_offers(
+                PriceQuery(code='9783518368121', kind='books', max_price=Decimal('10')))
+        self.assertTrue(all(o.price <= Decimal('10') for o in offers))
+        self.assertTrue(offers)  # Buch A (9.99) survives, Buch B (12.00) filtered
